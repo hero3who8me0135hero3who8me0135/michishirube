@@ -1,6 +1,6 @@
-// アプリ本体を直したときは、下の v1 を v2, v3… に変えてからアップロードしてください。
+// アプリ本体を直したときは、下の版番号の数字を1つ上げてからアップロードしてください。
 // stories.json（人物）は版番号を変えなくても、ネットにつながっていれば最新が読み込まれます。
-const CACHE = "michishirube-v1";
+const CACHE = "michishirube-v2";
 const FILES = ["./","./index.html","./stories.json","./manifest.webmanifest",
   "./icons/icon-192.png","./icons/icon-512.png","./icons/maskable-512.png","./icons/apple-touch-icon.png",
   "./fonts/BIZUDPGothic-Regular.woff2","./fonts/BIZUDPGothic-Bold.woff2","./fonts/ZenMaruGothic-Medium.woff2",
