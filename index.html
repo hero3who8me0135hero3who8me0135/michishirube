@@ -1,0 +1,803 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#ff8fab">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="みちしるべ">
+<title>みちしるべ 進路の地図</title>
+<style>
+@font-face{font-family:"BIZ UDPGothic";src:url(fonts/BIZUDPGothic-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
+@font-face{font-family:"BIZ UDPGothic";src:url(fonts/BIZUDPGothic-Bold.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:"Zen Maru Gothic";src:url(fonts/ZenMaruGothic-Medium.woff2) format("woff2");font-weight:500;font-display:swap}
+@font-face{font-family:"Zen Maru Gothic";src:url(fonts/ZenMaruGothic-Bold.woff2) format("woff2");font-weight:700;font-display:swap}
+@font-face{font-family:"Yusei Magic";src:url(fonts/YuseiMagic-Regular.woff2) format("woff2");font-weight:400;font-display:swap}
+
+/* VOICE: 友だちの手帳みたいに、やさしくてかわいい。でも子どもっぽすぎない。
+   IDEA: シール手帳・方眼ノート。マスキングテープ、シール、手書きのことば。
+   PICTURE: ヘッダーに、星とおんぷのシールが散らばる「くねくね道」のイラスト。
+   COLOUR and TYPE: ミルキーピンク×ミント×レモン。見出しZen丸ゴシック、手書き風Yusei Magic、本文BIZ UDPゴシック。
+   LAYOUT: 方眼紙の上にカードを貼るように。タブはインデックスシール。 */
+:root{color-scheme:light dark;
+--bg:light-dark(#fff6f8,#1f1823);--grid:light-dark(rgba(255,143,171,.13),rgba(255,143,171,.07));
+--card:light-dark(#ffffff,#2b2130);--ink:light-dark(#3d2b38,#f7e9f1);--sub:light-dark(#8b6c7e,#c9adbf);
+--line:light-dark(#f6d7e0,#46344a);
+--pink:light-dark(#ff6f91,#ff8fab);--pinkSoft:light-dark(#ffe4ec,#4a2a3a);
+--mint:light-dark(#2fae9b,#6fd8c6);--mintSoft:light-dark(#dcf6f1,#1f3b37);
+--lemon:light-dark(#ffcf5a,#ffd877);--lemonSoft:light-dark(#fff3cf,#43391d);
+--sky:light-dark(#4f86e8,#8fb2f6);--skySoft:light-dark(#e3eeff,#22304a);
+--blue:light-dark(#3566cf,#8fb2f6);--blueSoft:light-dark(#e6eefe,#22304a);
+--red:light-dark(#e0466a,#ff8fa5);--redSoft:light-dark(#ffe6ec,#4a2733)}
+:root[data-theme=light]{color-scheme:light}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+html{scroll-padding-top:72px}
+body{margin:0;color:var(--ink);font:17px/1.75 "BIZ UDPGothic","Hiragino Sans","Meiryo",sans-serif;overflow-x:clip;
+ background-color:var(--bg);background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px}
+h1,h2,h3{font-family:"Zen Maru Gothic","BIZ UDPGothic",sans-serif;line-height:1.3;text-wrap:balance;margin:0}
+h2{font-size:clamp(24px,3.6vw,32px)}h3{font-size:19px}
+.hand{font-family:"Yusei Magic","Zen Maru Gothic",sans-serif}
+p{margin:.4em 0}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--mint);outline-offset:2px}
+/* ヘッダー */
+.top{background:linear-gradient(135deg,#ff8fab 0%,#ffb199 55%,#ffd98a 100%);color:#4a2238;padding:16px max(4vw,16px) 0;position:relative;overflow:hidden}
+:root[data-theme=dark] .top{background:linear-gradient(135deg,#5a2a46 0%,#6b3a3f 55%,#6a5428 100%);color:#fff2f7}
+@media(prefers-color-scheme:dark){:root:not([data-theme=light]) .top{background:linear-gradient(135deg,#5a2a46 0%,#6b3a3f 55%,#6a5428 100%);color:#fff2f7}}
+.topin{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,420px);gap:12px;align-items:center;max-width:1100px;margin:0 auto}
+.top h1{font-size:clamp(34px,6vw,52px);letter-spacing:.04em}
+.top .lead{font-size:clamp(16px,2.2vw,19px);margin:2px 0 10px}
+.top svg{width:100%;height:auto;display:block}
+@media(max-width:640px){.topin{grid-template-columns:1fr}.top svg{max-height:120px}}
+nav{display:flex;gap:6px;overflow-x:auto;max-width:1100px;margin:6px auto 0}
+nav a{flex:none;color:inherit;text-decoration:none;padding:10px 16px;border-radius:16px 16px 0 0;font-size:15px;min-height:44px;display:flex;align-items:center;background:rgba(255,255,255,.45);font-family:"Zen Maru Gothic",sans-serif;font-weight:700}
+:root[data-theme=dark] nav a{background:rgba(255,255,255,.12)}
+nav a[aria-current=page]{background:var(--bg);color:var(--pink)}
+main{max-width:1100px;margin:0 auto;padding:22px max(4vw,14px) 70px}
+section.view{display:none}section.view.on{display:block}
+.view>h2{display:inline-block;background:linear-gradient(transparent 62%,var(--lemonSoft) 62%);padding:0 4px}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:22px;padding:20px 18px 18px;margin:18px 0;position:relative;box-shadow:0 6px 0 var(--line)}
+.card.tape::before{content:"";position:absolute;top:-11px;left:26px;width:84px;height:22px;transform:rotate(-4deg);border-radius:3px;opacity:.9;
+ background:repeating-linear-gradient(45deg,var(--pink) 0 6px,var(--pinkSoft) 6px 12px)}
+.card.tape.m::before{background:repeating-linear-gradient(45deg,var(--mint) 0 6px,var(--mintSoft) 6px 12px);left:auto;right:28px;transform:rotate(3deg)}
+.card.tape.y::before{background:repeating-linear-gradient(90deg,var(--lemon) 0 8px,var(--lemonSoft) 8px 16px)}
+.muted{color:var(--sub);font-size:15px}
+.small{font-size:14px;color:var(--sub)}
+.b{color:var(--blue);font-weight:700}.r{color:var(--red);font-weight:700}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.grid2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,300px),1fr));gap:16px}
+.btn{border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:9px 18px;min-height:44px;font-weight:700}
+.btn.pri{background:var(--pink);border-color:var(--pink);color:#fff;box-shadow:0 3px 0 rgba(160,40,80,.25)}
+.chip{border:1.5px solid var(--line);background:var(--card);border-radius:999px;padding:8px 15px;min-height:44px;font-size:15px}
+.chip[aria-pressed=true]{background:var(--mint);color:#fff;border-color:var(--mint);font-weight:700}
+input[type=text],input[type=search],textarea,select{width:100%;border:1.5px solid var(--line);background:var(--bg);border-radius:14px;padding:10px 14px;font-size:16px}
+textarea{min-height:100px;background-image:linear-gradient(transparent 30px,var(--line) 31px);background-size:100% 31px;line-height:31px}
+.scale{display:flex;gap:8px;flex-wrap:wrap}
+.scale button{width:52px;height:52px;border-radius:50%;border:1.5px solid var(--line);background:var(--card);font-size:16px;font-weight:700}
+.scale button[aria-pressed=true]{background:var(--pink);color:#fff;border-color:var(--pink);transform:scale(1.08)}
+.note{border:1.5px dashed var(--blue);background:var(--blueSoft);padding:12px 16px;border-radius:16px;margin:12px 0}
+.note.red{border-color:var(--red);background:var(--redSoft)}
+/* 進路マップ */
+.map{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));background:var(--card);border:1.5px solid var(--line);border-radius:24px;overflow:hidden;box-shadow:0 6px 0 var(--line)}
+.col{padding:14px 12px 16px;border-right:2px dotted var(--line);position:relative}
+.col:nth-child(1){background:linear-gradient(var(--pinkSoft),transparent 90px)}
+.col:nth-child(2){background:linear-gradient(var(--mintSoft),transparent 90px)}
+.col:nth-child(3){background:linear-gradient(var(--lemonSoft),transparent 90px)}
+.col:nth-child(4){background:linear-gradient(var(--skySoft),transparent 90px)}
+.col:last-child{border-right:0}
+.col h3{font-size:17px}
+.col .age{font-size:13px;color:var(--sub);margin-bottom:8px}
+.opt{display:block;width:100%;text-align:left;border:1.5px solid var(--line);background:var(--card);border-radius:16px;padding:9px 12px;margin:7px 0;font-size:15px;line-height:1.45;min-height:44px}
+.opt[aria-pressed=true]{background:var(--pink);border-color:var(--pink);color:#fff;font-weight:700;box-shadow:0 4px 0 rgba(160,40,80,.25)}
+.opt .fit{display:block;font-size:12px;opacity:.85;font-weight:400}
+.col.done::after{content:"";position:absolute;right:-11px;top:50%;width:20px;height:20px;z-index:2;background:var(--lemon);
+ clip-path:polygon(50% 0,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%)}
+.col:last-child.done::after{display:none}
+@media(max-width:760px){.map{grid-template-columns:1fr}.col{border-right:0;border-bottom:2px dotted var(--line)}.col.done::after{right:auto;left:50%;top:auto;bottom:-11px}}
+.timeline{list-style:none;margin:0;padding:0}
+.timeline li{display:grid;grid-template-columns:6em 1fr;gap:12px;padding:10px 0;border-bottom:1.5px dashed var(--line)}
+.timeline .t{font-weight:700;color:var(--pink);white-space:nowrap;font-family:"Yusei Magic",sans-serif;font-size:18px}
+.meter{height:14px;border-radius:7px;background:var(--pinkSoft);overflow:hidden}.meter i{display:block;height:100%;background:linear-gradient(90deg,var(--pink),var(--lemon))}
+ul.tight{margin:.3em 0;padding-left:1.2em}ul.tight li{margin:.2em 0}
+/* 学び直し */
+.unit{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:8px 0;border-bottom:1.5px dashed var(--line)}
+.unit button{flex:none;min-width:7.5em}
+.st1{background:var(--mintSoft);border-color:var(--mint)!important}.st2{background:var(--mint);color:#fff;border-color:var(--mint)!important}
+.timer{font-size:clamp(48px,9vw,78px);font-weight:700;font-variant-numeric:tabular-nums;text-align:center;color:var(--pink);font-family:"Zen Maru Gothic",sans-serif}
+/* 物語 */
+.stools{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
+@media(max-width:600px){.stools{grid-template-columns:1fr}}
+.sgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,310px),1fr));gap:18px;margin-top:14px}
+.story{background:var(--card);border:1.5px solid var(--line);border-radius:22px;overflow:hidden;box-shadow:0 5px 0 var(--line);display:flex;flex-direction:column}
+.story .hd{padding:14px 16px 10px;position:relative}
+.story .hd h3{font-size:20px;padding-right:44px}
+.story .meta{font-size:13px;color:var(--sub)}
+.tag{display:inline-block;font-size:12px;border-radius:999px;padding:1px 9px;margin:4px 4px 0 0;font-weight:700}
+.c-音楽 .hd{background:var(--pinkSoft)}.c-アート .hd{background:var(--lemonSoft)}.c-ことば .hd{background:var(--skySoft)}
+.c-スポーツ .hd{background:var(--mintSoft)}.c-研究 .hd{background:var(--skySoft)}.c-仕事 .hd{background:var(--lemonSoft)}
+.c-表現 .hd{background:var(--pinkSoft)}.c-くらし .hd{background:var(--mintSoft)}
+.tag.now{background:var(--pink);color:#fff}.tag.old{background:var(--card);color:var(--sub);border:1px solid var(--line)}.tag.eh{background:var(--mint);color:#fff}
+.fav{position:absolute;right:10px;top:10px;width:44px;height:44px;border-radius:50%;border:0;background:var(--card);display:grid;place-items:center}
+.fav svg{width:22px;height:22px;fill:none;stroke:var(--pink);stroke-width:2}
+.fav[aria-pressed=true] svg{fill:var(--pink)}
+.story .bd{padding:10px 16px 14px;flex:1;display:flex;flex-direction:column;gap:6px;font-size:15px;line-height:1.65}
+.story .bd b{font-size:12px;display:inline-block;border-radius:6px;padding:0 6px;margin-right:4px}
+.k1{background:var(--blueSoft);color:var(--blue)}.k2{background:var(--redSoft);color:var(--red)}.k3{background:var(--mintSoft);color:var(--mint)}
+.story .hint{margin-top:auto;padding-top:8px;border-top:1.5px dashed var(--line);font-family:"Yusei Magic",sans-serif;color:var(--pink);font-size:16px}
+.pick{border:2px solid var(--pink)}
+.count{font-family:"Yusei Magic",sans-serif;color:var(--pink);font-size:18px}
+/* 気持ち */
+.show{position:fixed;inset:0;background:var(--bg);z-index:50;display:none;padding:8vh 8vw;overflow:auto}
+.show.on{display:block}.show p.big{font-size:clamp(24px,4.5vw,38px);line-height:1.6;font-family:"Zen Maru Gothic",sans-serif}
+.bars{display:flex;gap:5px;align-items:flex-end;height:80px}
+.bars span{flex:1;background:var(--mint);border-radius:8px 8px 3px 3px;min-height:5px}
+.bars span.lo{background:var(--pink)}
+.toast{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 20px;border-radius:999px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:60}
+.toast.on{opacity:1}
+@media(prefers-reduced-motion:reduce){.toast{transition:none}.scale button[aria-pressed=true]{transform:none}}
+table{border-collapse:collapse;width:100%;font-size:15px}td,th{border-bottom:1.5px dashed var(--line);padding:8px;text-align:left;vertical-align:top}
+.scroll{overflow-x:auto}
+a{color:var(--blue)}
+</style>
+</head>
+<body>
+<header class="top">
+ <div class="topin">
+  <div>
+   <h1>みちしるべ</h1>
+   <p class="lead hand">道はひとつじゃない。わたしのペースで、地図を広げよう。</p>
+  </div>
+  <svg viewBox="0 0 420 150" role="img" aria-label="星とおんぷが散らばる、くねくねの道">
+   <defs>
+    <g id="star"><path d="M0-10 3-3 10-3 4 2 6 9 0 5-6 9-4 2-10-3-3-3Z"/></g>
+    <g id="note"><ellipse cx="0" cy="8" rx="6" ry="4.5" transform="rotate(-20)"/><rect x="4.5" y="-14" width="2.4" height="22" rx="1"/><path d="M6.9-14c6 2 9 6 7 12-1-4-3-6-7-7z"/></g>
+   </defs>
+   <path d="M10 120 C70 120 70 40 140 50 S220 130 280 90 S350 20 410 30" fill="none" stroke="#fff" stroke-width="7" stroke-linecap="round" stroke-dasharray="2 14" opacity=".95"/>
+   <g fill="#fff"><circle cx="10" cy="120" r="9"/><circle cx="140" cy="50" r="9"/><circle cx="280" cy="90" r="9"/></g>
+   <g fill="#ff6f91"><circle cx="10" cy="120" r="5"/><circle cx="140" cy="50" r="5"/><circle cx="280" cy="90" r="5"/></g>
+   <g transform="translate(410 30)"><circle r="14" fill="#fff"/><use href="#star" fill="#ffcf5a" transform="scale(1.1)"/></g>
+   <use href="#star" fill="#fff" transform="translate(60 30) scale(.9)"/>
+   <use href="#star" fill="#ffcf5a" transform="translate(205 25) scale(.7)"/>
+   <use href="#star" fill="#fff" transform="translate(350 120) scale(.8)"/>
+   <use href="#note" fill="#fff" transform="translate(95 95)"/>
+   <use href="#note" fill="#ff6f91" transform="translate(240 40) scale(.9)"/>
+   <use href="#note" fill="#fff" transform="translate(330 70) scale(.8)"/>
+   <g font-family="Yusei Magic, sans-serif" font-size="13" fill="#fff"><text x="0" y="146">いま</text><text x="124" y="24">15さい</text><text x="262" y="122">18さい</text><text x="372" y="62">ゆめ</text></g>
+  </svg>
+ </div>
+ <nav id="nav">
+  <a href="#today">きょう</a>
+  <a href="#map">進路マップ</a>
+  <a href="#study">学び直し</a>
+  <a href="#heart">気持ちノート</a>
+  <a href="#stories">ひとの物語</a>
+  <a href="#family">おうちの人へ</a>
+ </nav>
+</header>
+
+<main>
+<!-- きょう -->
+<section class="view" id="v-today">
+  <h2 id="hello">きょうの調子はどう？</h2>
+  <p class="muted">記録は、このタブレットの中だけに残ります。書きたくない日は書かなくて大丈夫。</p>
+  <div class="grid2">
+    <div class="card tape">
+      <h3>からだの調子</h3>
+      <p class="small">1 とてもつらい … 5 いい感じ</p>
+      <div class="scale" id="sBody"></div>
+      <h3 style="margin-top:14px">こころの調子</h3>
+      <p class="small">1 しずんでいる … 5 晴れている</p>
+      <div class="scale" id="sMind"></div>
+      <p style="margin-top:12px"><label for="todayNote">ひとこと（なくてもOK）</label></p>
+      <input type="text" id="todayNote" placeholder="例：午後から少し楽になった">
+      <div class="row" style="margin-top:12px"><button class="btn pri" id="saveToday">きょうの記録をのこす</button></div>
+    </div>
+    <div class="card tape m">
+      <h3>きょうのメッセージ</h3>
+      <p id="todayMsg" style="font-size:19px;font-family:'Zen Maru Gothic',sans-serif"></p>
+      <h3 style="margin-top:14px">ちいさな一歩（ひとつだけ選べばOK）</h3>
+      <div id="steps"></div>
+      <button class="btn" id="moreSteps" style="margin-top:8px">ほかの一歩を見る</button>
+    </div>
+  </div>
+  <div class="card tape y">
+    <h3>この2週間のからだの調子</h3>
+    <div class="bars" id="bars"></div>
+    <p class="small" id="barsNote">記録すると、ここに表示されます。波があるのはふつうのこと。良い日・つらい日の傾向は、主治医やおうちの人と話すときの材料になります。</p>
+  </div>
+</section>
+
+<!-- 進路マップ -->
+<section class="view" id="v-map">
+  <h2>進路マップ：道をえらんで、シミュレーション</h2>
+  <p class="muted">左から順に1つずつ選ぶと、下に「その道のりの地図」が出ます。何回でも選び直せます。どの道にも良いところと気をつけるところがあり、<span class="b">途中で乗りかえる道</span>もあります。</p>
+  <div class="map" id="map"></div>
+  <div id="sim"></div>
+  <div class="card">
+    <h3>保存したルートをくらべる</h3>
+    <div id="saved"><p class="small">気になるルートを「保存」すると、ここに並びます。2〜3個くらべてみると、自分が大事にしたいことが見えてきます。</p></div>
+  </div>
+</section>
+
+<!-- 学び直し -->
+<section class="view" id="v-study">
+  <h2>学び直し：自分のペースで、少しずつ</h2>
+  <p class="muted">単元をタップすると「まだ → やってみた → わかった」と変わります。順番どおりでなくて大丈夫。小学校の内容にもどるのも立派な学び直しです。</p>
+  <div class="grid2">
+    <div class="card tape">
+      <h3>15分だけタイマー</h3>
+      <p class="small">体調のいい時間に。途中でやめてもOK。終わったら記録に残ります。</p>
+      <div class="row"><select id="tSubj"></select></div>
+      <div class="timer" id="tView">15:00</div>
+      <div class="row" style="justify-content:center"><button class="btn pri" id="tStart">はじめる</button><button class="btn" id="tStop">おわる（記録）</button></div>
+    </div>
+    <div class="card tape m">
+      <h3>学習の記録</h3>
+      <p class="small">この記録は、学校に「家での学び」を伝える材料になります（出席扱い・成績評価をするかは学校が判断します）。</p>
+      <div id="logs"></div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn" id="addLog">手で記録を足す</button>
+        <button class="btn" id="copyLogs">先生に見せる用にコピー</button>
+      </div>
+    </div>
+  </div>
+  <div id="subjects"></div>
+</section>
+
+<!-- 気持ちノート -->
+<section class="view" id="v-heart">
+  <h2>気持ちノート</h2>
+  <p class="muted">不安は、ことばにすると少し小さくなります。そして<span class="r">大事なこと・深刻なことほど、ひとりで決めずに、おうちの人やおじいちゃん・おばあちゃんに話してほしい</span>。このノートはそのための準備にも使えます。</p>
+  <div class="card tape y">
+    <h3>いま気になっていることは？（いくつでも）</h3>
+    <div class="row" id="worries"></div>
+    <div id="worryResp"></div>
+  </div>
+  <div class="card">
+    <h3>メモする</h3>
+    <textarea id="hText" placeholder="思ったことを、そのまま書いてみよう"></textarea>
+    <p style="margin-top:10px">これはどれくらい大事なこと？</p>
+    <div class="scale" id="sLevel"></div>
+    <p class="small">1 ちょっと気になる … 5 とても大きくて重い</p>
+    <div id="levelMsg"></div>
+    <div class="row" style="margin-top:10px"><button class="btn pri" id="saveHeart">ノートにのこす</button></div>
+  </div>
+  <div class="card tape">
+    <h3>話しかけ方カード</h3>
+    <p class="small">話しはじめがいちばんむずかしい。カードをタップすると大きく表示されるので、そのまま見せてもOK。</p>
+    <div class="grid2" id="talkCards"></div>
+  </div>
+  <div class="card tape m">
+    <h3>これまでのノート</h3>
+    <div id="hList"><p class="small">まだありません。</p></div>
+  </div>
+  <div class="note red">
+    <b>とてもつらくて、どうしようもないとき</b><br>
+    まず、おうちの人に「今つらい」とだけでも伝えてください。家の人に言いにくいときや夜中は、ここにも電話できます（無料）。<br>
+    ・24時間子供SOSダイヤル <b>0120-0-78310</b>（なやみいおう・24時間）<br>
+    ・チャイルドライン <b>0120-99-7777</b>（18歳まで・毎日16時〜21時）
+  </div>
+</section>
+
+<!-- ひとの物語 -->
+<section class="view" id="v-stories">
+  <h2>ひとの物語：回り道をした人たち</h2>
+  <p class="muted">すごい人も、最初からうまくいったわけじゃない。つまずいて、迷って、遠回りしながら、自分の道をつくってきました。気になる人はハートで保存できます。</p>
+  <div class="card tape" id="todayPick"></div>
+  <div class="card tape m">
+    <div class="stools"><input type="search" id="sq" placeholder="名前やことばでさがす（例：ピアノ、病気、遅咲き）" aria-label="人物をさがす"><span class="count" id="sCount"></span></div>
+    <p class="small" style="margin-top:10px">分野</p><div class="row" id="sCat"></div>
+    <p class="small" style="margin-top:8px">時代・そのほか</p><div class="row" id="sEra"></div>
+  </div>
+  <div class="sgrid" id="sList"></div>
+  <div class="row" style="justify-content:center;margin-top:18px"><button class="btn pri" id="sMore">もっと見る</button></div>
+  <div class="card tape y" id="addCard" style="margin-top:28px">
+    <h3>人物を追加する</h3>
+    <p class="small">本や番組で知った人、身近な人の話など、自由に追加できます。追加した人は「わたしが追加」で見られます（このタブレットに保存）。</p>
+    <div class="grid2" style="margin-top:8px">
+      <div><label for="aN">名前（必須）</label><input type="text" id="aN"></div>
+      <div><label for="aM">どんな人？（例：ピアニスト（1990年〜））</label><input type="text" id="aM"></div>
+      <div><label for="aC">分野</label><select id="aC"></select></div>
+      <div><label for="aE">時代</label><select id="aE"><option value="今">いまの人</option><option value="昔">むかしの人</option></select>
+        <label class="row small" style="margin-top:6px"><input type="checkbox" id="aH" style="width:22px;height:22px"> 愛媛・四国ゆかり</label></div>
+    </div>
+    <p style="margin-top:10px"><label for="aA">はじめ</label></p><textarea id="aA" style="min-height:64px"></textarea>
+    <p><label for="aB">つまずき・迷い</label></p><textarea id="aB" style="min-height:64px"></textarea>
+    <p><label for="aS">その後</label></p><textarea id="aS" style="min-height:64px"></textarea>
+    <p><label for="aT">ヒント（ひとことで）</label></p><input type="text" id="aT">
+    <div class="row" style="margin-top:12px"><button class="btn pri" id="aSave">追加する</button><button class="btn" id="aCancel" hidden>編集をやめる</button></div>
+    <div id="mine" style="margin-top:14px"></div>
+  </div>
+  <p class="small" style="margin-top:14px">※ 人物のエピソードは、広く知られている伝記的な事実をもとに短くまとめたものです。くわしくは本や図書館で調べてみよう。</p>
+</section>
+
+<!-- おうちの人へ -->
+<section class="view" id="v-family">
+  <h2>おうちの人へ：制度メモと使い方</h2>
+  <p class="muted">2026年11月22日時点で、公的機関の資料をもとに整理しました。制度や入試は毎年変わるので、出願前に必ず最新の要項・学校で確認してください。</p>
+  <div class="card scroll">
+    <table>
+      <tr><th>テーマ</th><th>わかっていること</th><th>確認先</th></tr>
+      <tr><td>出席扱い・成績評価</td><td>自宅でのICT等を使った学習や、学校外施設での相談・指導について、一定の要件を満たせば学校が出席扱いや成績評価をできる。判断は学校。2024年8月の省令改正で、欠席中の学習成果を成績に反映できる場合が明確化された。</td><td>担任・学校／松山市教育委員会　<a href="https://www.mext.go.jp/a_menu/shotou/seitoshidou/1422155_00002.htm">文科省通知</a></td></tr>
+      <tr><td>県立高校の入試</td><td>一般入学者選抜に加え特色入学者選抜があり、調査書・自己アピール書などで出願、検査項目は高校ごとに異なる。<span class="r">長期欠席の場合の調査書の扱い・受検上の配慮は未確認</span>。</td><td>中学校の進路担当／<a href="https://ehime-kyoiku.esnet.ed.jp/file/1021">県教委の案内</a></td></tr>
+      <tr><td>伊予高校 芸術科</td><td>令和8年度から普通科のコースを改編し、音楽・美術・書道の芸術科を設置。県下一円から募集。特色入学者選抜で調査書・面接・実技テスト。</td><td><a href="https://iyo-h.esnet.ed.jp/file/8856">伊予高校 募集要項</a></td></tr>
+      <tr><td>北条清新高校</td><td>北条高校を改編した、昼間二部定時制（午前中心のⅠ部／午後中心のⅡ部）と通信制を併置する高校。定時制は4年が基本で、他部・通信制の単位を活用して3年での卒業も可能。<span class="r">通信制課程の出願先や体制は移行期のため要確認</span>。</td><td><a href="https://koukoukyouiku.esnet.ed.jp/file/17385">県教委資料</a>／<a href="https://matsuyamahigashi-h-c.esnet.ed.jp/file/1600">通信制募集要項</a></td></tr>
+      <tr><td>高卒認定試験</td><td>その年度内に16歳以上になる人が受験可。年2回（8月・11月ごろ）。合格で大学・短大・専門学校の受験資格。18歳になる前に全科目合格した場合は18歳から合格者。令和8年度から「情報」が加わった。</td><td><a href="https://www.mext.go.jp/a_menu/koutou/shiken/index.htm">文科省</a></td></tr>
+    </table>
+  </div>
+  <div class="card tape y">
+    <h3>中2のうちに相談しておきたいこと（提案）</h3>
+    <ul class="tight">
+      <li><b>担任・学年主任</b>：家庭学習を出席扱い・成績評価にできるか、その条件（学習計画・記録の出し方）</li>
+      <li><b>進路担当</b>：欠席が多い場合の調査書の扱い、特色選抜で使える材料（音楽の活動など）</li>
+      <li><b>主治医</b>：入試当日や通学時間帯に関する配慮の必要性（診断書が必要になる場合に備えて）</li>
+      <li><b>スクールカウンセラー／教育支援センター</b>：本人が家族以外に話せる場をつくる</li>
+      <li><b>学校見学</b>：北条清新（昼間定時制Ⅱ部・通信制）、伊予（芸術科）、私立通信制の通学コースなど。本人の体調の良い時間帯で</li>
+    </ul>
+    <p class="small">このアプリの「学習の記録」は、学校への説明材料として使えます。「気持ちノート」は本人の許可なく見ないでください。本人が見せたいときに見せる仕組みです。</p>
+  </div>
+  <div class="card">
+    <h3>データのバックアップ</h3>
+    <p class="small">記録はこの端末のブラウザ内にだけ保存されます。消えることもあるので、ときどきコピーして保存しておくと安心です。</p>
+    <div class="row"><button class="btn" id="exp">データをコピー</button><button class="btn" id="impBtn">貼り付けて戻す</button></div>
+    <textarea id="imp" placeholder="コピーしたデータをここに貼り付けて「貼り付けて戻す」" style="margin-top:8px"></textarea>
+    <p style="margin-top:10px"><label for="nameIn">呼び名（あいさつに使います・空でもOK）</label></p>
+    <div class="row"><input type="text" id="nameIn" style="max-width:240px"><button class="btn" id="saveName">保存</button></div>
+  </div>
+</section>
+</main>
+
+<div class="show" id="show"><p class="big" id="showText"></p><button class="btn pri" id="showClose" style="margin-top:20px">とじる</button></div>
+<div class="toast" id="toast"></div>
+
+<script>
+{
+/* ---------- 保存 ---------- */
+const KEY='michishirube-v1';
+let S={name:'',days:{},routes:[],units:{},logs:[],notes:[],pick:{}};
+try{const t=localStorage.getItem(KEY);if(t)S=Object.assign(S,JSON.parse(t));}catch(e){}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}};
+const $=id=>document.getElementById(id);
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const toast=m=>{const t=$('toast');t.textContent=m;t.classList.add('on');setTimeout(()=>t.classList.remove('on'),1800)};
+const copy=(txt,msg)=>{try{navigator.clipboard.writeText(txt).then(()=>toast(msg||'コピーしました'),()=>fallback(txt));}catch(e){fallback(txt)}};
+const fallback=txt=>{$('imp').value=txt;location.hash='family';toast('下の欄に表示しました。長押しでコピーしてね')};
+
+/* ---------- タブ ---------- */
+const views=['today','map','study','heart','stories','family'];
+const route=()=>{const h=location.hash.slice(1);const v=views.includes(h)?h:'today';
+  views.forEach(x=>$('v-'+x).classList.toggle('on',x===v));
+  document.querySelectorAll('#nav a').forEach(a=>a.toggleAttribute('aria-current',a.getAttribute('href')==='#'+v)&&a.setAttribute('aria-current','page'));
+  window.scrollTo(0,0)};
+window.addEventListener('hashchange',route);
+
+/* ---------- きょう ---------- */
+const STEPS=['好きな曲を1曲だけ弾く','耳コピしたい曲のメロディーを4小節だけ探す','窓を開けて、外の空気を3回吸う','水を1杯のむ','漢字を5つだけ書く','数学の計算を3問だけ解く','英単語を5つ声に出す','気になる高校のホームページを1つ見る','「ひとの物語」を1人だけ読む','今日うれしかったことを1つ書く','おうちの人に「おはよう」か「ありがとう」を言う','5分だけ横になって休む（休むのも大事な一歩）','楽譜の記号を1つ調べる','好きな音楽家のことを1つ調べる'];
+let stepOff=0;
+const drawSteps=()=>{const n=STEPS.length;$('steps').innerHTML=[0,1,2].map(i=>`<button class="opt">${esc(STEPS[(stepOff+i*5)%n])}</button>`).join('');
+  $('steps').querySelectorAll('button').forEach(b=>b.onclick=()=>{toast('いいね。できたら、それで十分。');b.setAttribute('aria-pressed','true')})};
+$('moreSteps').onclick=()=>{stepOff+=1;drawSteps()};
+const mkScale=(el,cb,init)=>{el.innerHTML=[1,2,3,4,5].map(n=>`<button aria-pressed="${init===n}" data-n="${n}">${n}</button>`).join('');
+  el.querySelectorAll('button').forEach(b=>b.onclick=()=>{el.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed','false'));b.setAttribute('aria-pressed','true');cb(+b.dataset.n)})};
+let tb=0,tm=0;const d0=S.days[today()];if(d0){tb=d0.b;tm=d0.m;$('todayNote').value=d0.note||''}
+const msg=()=>{let m;
+  if(!tb&&!tm)m='来てくれてありがとう。きょうの調子を、数字で教えてね。';
+  else if(tb<=2)m='きょうは「休む日」。からだを休めるのも、ちゃんとした仕事です。できないことより、できたことを数えよう。';
+  else if(tm<=2)m='こころが重い日もあるよね。ひとりで抱えすぎないで。少しだけでも、おうちの人に話してみない？';
+  else if(tb>=4&&tm>=4)m='いい感じの日。やりたいことを1つ、楽しんでみよう。がんばりすぎず、余力を残すのがコツ。';
+  else m='まあまあの日。ちいさな一歩を1つだけ選んでみよう。';
+  $('todayMsg').textContent=m};
+mkScale($('sBody'),n=>{tb=n;msg()},tb);mkScale($('sMind'),n=>{tm=n;msg()},tm);
+$('saveToday').onclick=()=>{if(!tb&&!tm){toast('数字を選んでね');return}S.days[today()]={b:tb,m:tm,note:$('todayNote').value};save();drawBars();toast('のこしました')};
+const drawBars=()=>{const out=[];let any=false;for(let i=13;i>=0;i--){const d=new Date();d.setDate(d.getDate()-i);const k=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');const v=S.days[k];if(v)any=true;
+  out.push(v&&v.b?`<span class="${v.b<=2?'lo':''}" style="height:${v.b*20}%" title="${k} からだ${v.b}"></span>`:`<span style="height:4%;opacity:.25" title="${k}"></span>`)}
+  $('bars').innerHTML=out.join('');if(any)$('barsNote').textContent='赤はつらかった日。波があるのはふつうのこと。傾向は、主治医やおうちの人と話すときの材料になります。'};
+const hello=()=>{$('hello').textContent=(S.name?S.name+'さん、':'')+'きょうの調子はどう？';$('nameIn').value=S.name||''};
+
+/* ---------- 進路マップ ---------- */
+const STAGES=[
+{key:'s1',title:'中学のあいだ',age:'13〜15歳（今〜中3）',opts:[
+ {id:'home',name:'家で学ぶ（タブレット・オンライン教材など）',fit:3,
+  desc:'体調のいい時間に家で学ぶ。一定の要件を満たせば、学校が出席扱いや成績評価をすることがあります（判断は学校）。',
+  good:['体調に合わせて時間を選べる','好きな音楽の時間も確保しやすい','学習記録を残せば、先生に見てもらえる'],
+  care:['ひとりだと生活リズムが崩れやすい','出席扱い・成績評価になるかは、学校との相談しだい'],
+  now:['このアプリの「学習の記録」をつける','月に1回くらい、担任の先生と様子を共有する']},
+ {id:'center',name:'教育支援センター・フリースクールに通う',fit:2,
+  desc:'市の教育支援センターや民間の施設で、少人数で過ごしたり学んだりする。施設によっては出席扱いになることも。',
+  good:['家族以外の人と話せる','少人数で落ち着いて過ごせる'],
+  care:['通う時間帯が体調と合うか、見学で確かめる','出席扱いの条件は学校・教育委員会に確認'],
+  now:['見学に行ってみる（午後の時間でもよいか聞く）']},
+ {id:'online',name:'別室やオンラインで学校とつながる',fit:2,
+  desc:'保健室・別室への登校や、授業のオンライン参加で、学校とのつながりを保つ。',
+  good:['先生と直接つながるので、成績や入試の相談がしやすい','テストを受けられる場合もある'],
+  care:['朝の登校は体調的に負担になりやすい。午後だけなど相談を'],
+  now:['「何時ごろなら来やすいか」を先生と相談する']},
+ {id:'step',name:'体調に合わせて、少しずつ登校',fit:1,
+  desc:'行ける日に、行ける時間だけ登校する。',
+  good:['友だちとのつながり','授業やテストを受けられる機会が増える'],
+  care:['無理をすると反動が出ることも。主治医と相談しながら'],
+  now:['「行けた日」を数える（行けなかった日は数えない）']}
+]},
+{key:'s2',title:'15歳から',age:'高校の3〜4年間',opts:[
+ {id:'zen',name:'全日制高校（一般入試）',fit:1,
+  desc:'多くの人が進む、朝から通う高校。一般入試は学力検査と調査書などで選ばれます。',
+  good:['学校・学科の選択肢がいちばん多い','部活や行事などの体験が多い'],
+  care:['毎朝の登校が前提。高校は欠席が多いと進級に影響することがある','欠席が多い場合の調査書の扱いは、中学の先生に確認'],
+  now:['5教科の基礎の学び直し','体調面の配慮について、早めに中学校に相談']},
+ {id:'toku',name:'全日制高校（特色入試）',fit:1,
+  desc:'調査書・自己アピール書・面接など、高校ごとに決めた方法で選ばれる入試。得意なことを生かせる場合があります。',
+  good:['音楽など、得意なことや活動をアピールできる場合がある'],
+  care:['高校によって出願の条件や検査がちがう。要項で必ず確認','入学後は毎朝の登校が前提'],
+  now:['音楽の活動を記録しておく（弾けるようになった曲・動画など）']},
+ {id:'iyo',name:'伊予高校 芸術科（音楽）',fit:1,
+  desc:'令和8年度にできた、県内唯一の芸術科（音楽・美術・書道）。県内どこからでも出願でき、特色入試で実技テスト・面接・調査書などを見ます。',
+  good:['高校から音楽を専門的に学べる','芸術系の大学をめざす仲間がいる'],
+  care:['全日制なので毎日の登校が前提。体調の配慮は事前に相談を','ピアノの実技に向けた準備が必要（楽譜を読む力・課題曲）'],
+  now:['楽譜を読む練習（楽譜クイズアプリなど）','学校説明会・見学に行く','ピアノの先生に習うことを考える']},
+ {id:'hiru',name:'昼間定時制（北条清新高校）',fit:3,
+  desc:'2026年にできた、昼間二部の定時制。午前中心のⅠ部と、午後中心のⅡ部があります。基本は4年、ほかの部や通信制の単位も使えば3年で卒業もできます。',
+  good:['午後中心のⅡ部なら、朝がつらくても通いやすい','少人数で、学び直しのサポートもある','大学進学にも対応'],
+  care:['通学に時間がかかる（松山市北条）。通い方を確認','新しい学校なので、最新の情報は学校に確認'],
+  now:['学校見学（できれば午後の時間に）','通学ルートを調べる']},
+ {id:'yakan',name:'夜間定時制（松山南高校など）',fit:2,
+  desc:'夕方から夜に授業がある高校。昼間は働いたり、ほかのことに時間を使ったりできます。',
+  good:['朝の負担がない','いろいろな年代・事情の人と学べる'],
+  care:['帰りが夜になる。睡眠のリズムと合うか考える'],
+  now:['授業の時間帯と自分の体調の波をくらべる']},
+ {id:'kotsu',name:'公立通信制高校',fit:3,
+  desc:'レポートの提出・スクーリング（登校日）・テストで単位をとる。登校は年30日くらいのイメージ。費用が比較的少ない。',
+  good:['自分のペースで学べる','音楽などに使える時間が多い','学費の負担が比較的少ない'],
+  care:['自分で計画を立てて続ける力が必要','ひとりで抱えこみやすいので、相談相手を作っておく'],
+  now:['1週間の「学ぶ時間」を決めて試してみる']},
+ {id:'shitsu',name:'私立通信制高校（通学コース・サポート校など）',fit:3,
+  desc:'週1日〜5日など通う日数を選べる学校が多い。音楽などのコースがある学校もあります。',
+  good:['通う日数や時間を選べる','先生や仲間とのつながりを作りやすいコースもある','やりたい分野のコースを選べる'],
+  care:['学費は学校によって大きくちがう（就学支援金の制度あり）','卒業までの支え方や雰囲気は、見学・体験で確かめる'],
+  now:['資料を2〜3校取りよせて、通学日数と学費をくらべる']},
+ {id:'kounin',name:'高卒認定試験を受ける',fit:3,
+  desc:'16歳になる年度から受けられる国の試験。合格すると大学・短大・専門学校の受験資格が得られます（高校卒業とは別のもの）。',
+  good:['試験は年2回。科目ごとに少しずつ合格を積み上げられる','空いた時間を音楽などに使える'],
+  care:['高校の「卒業」とはちがう。仲間や行事の経験は別に作る必要がある','18歳になるまでは合格者にならない'],
+  now:['どんな科目があるか、おうちの人と調べてみる']}
+]},
+{key:'s3',title:'18歳から',age:'高校のあと',opts:[
+ {id:'ondai',name:'音楽大学・芸術系の学部',fit:2,
+  desc:'演奏・作曲・音楽教育などを専門的に学ぶ。実技（ピアノなど）や楽典の試験があることが多い。',
+  good:['好きな音楽をとことん学べる'],care:['実技は積み重ねが必要。先生について習う時間を早めに'],
+  now:['クラシックの基礎練習にも少しずつ触れる']},
+ {id:'kyoin',name:'教育学部（音楽の先生をめざす）',fit:2,
+  desc:'音楽の教員免許をとる道。学校の先生だけでなく、教育の仕事全般につながる。',
+  good:['音楽と「人を教える」をかけ合わせられる'],care:['教育実習など、通う必要がある期間がある'],
+  now:['人に教えるのが好きか、弟や妹に教えて試してみる']},
+ {id:'univ',name:'いろいろな大学（総合型選抜・通信制大学も）',fit:2,
+  desc:'文学・心理・情報・医療など、音楽以外の分野も含めて広く学ぶ。活動や探究を評価する入試や、通信制の大学もある。',
+  good:['あとから好きなことが変わっても対応しやすい'],care:['入試の方法が多いので、早めに調べる'],
+  now:['「なぜ音楽が好きか」を言葉にしてみる（探究のタネになる）']},
+ {id:'senmon',name:'専門学校（音響・DTM・ピアノ調律など）',fit:2,
+  desc:'仕事に直結する技術を、2年前後で学ぶ。',
+  good:['仕事のイメージがはっきりしやすい'],care:['学校ごとに内容や就職先がちがう。見学で確かめる'],
+  now:['パソコンで音楽をつくる（DTM）を少し試してみる']},
+ {id:'work',name:'働きながら学ぶ・就職する',fit:2,
+  desc:'まず働いてみて、やりたいことが見つかったら学び直す道。社会人で大学に入る人もいる。',
+  good:['お金や社会の経験が身につく'],care:['体調に合う働き方（時間・場所）を選ぶ'],
+  now:['どんな仕事があるか、家族の仕事の話を聞いてみる']},
+ {id:'music',name:'音楽を仕事に（講師・作曲・配信など）',fit:3,
+  desc:'ピアノ講師、ゲームや動画の作曲・編曲、楽器店、音楽教室、ネット配信など。ひとつに決めず組み合わせる人も多い。',
+  good:['働く時間や場所を自分で調整しやすい仕事もある'],care:['収入が安定するまで時間がかかることも。ほかの仕事と組み合わせる道も考える'],
+  now:['弾いた曲を録音して、成長を記録してみる']}
+]},
+{key:'s4',title:'その先のゆめ',age:'20代〜',opts:[
+ {id:'d-music',name:'音楽とともに生きる',fit:3,desc:'',good:[],care:[],now:[]},
+ {id:'d-help',name:'だれかの役に立つ仕事',fit:3,desc:'',good:[],care:[],now:[]},
+ {id:'d-make',name:'何かをつくる仕事',fit:3,desc:'',good:[],care:[],now:[]},
+ {id:'d-free',name:'まだ決めない（それもOK）',fit:3,desc:'',good:[],care:[],now:[]}
+]}];
+const find=(k,id)=>STAGES.find(s=>s.key===k).opts.find(o=>o.id===id);
+const fitTxt=f=>['','朝の体調の影響：大きめ','朝の体調の影響：ふつう','朝の体調の影響：小さめ'][f];
+let pick=Object.assign({},S.pick||{});
+const drawMap=()=>{$('map').innerHTML=STAGES.map(s=>`<div class="col ${pick[s.key]?'done':''}"><h3>${s.title}</h3><div class="age">${s.age}</div>${s.opts.map(o=>`<button class="opt" data-k="${s.key}" data-id="${o.id}" aria-pressed="${pick[s.key]===o.id}">${esc(o.name)}${s.key!=='s4'?`<span class="fit">${fitTxt(o.fit)}</span>`:''}</button>`).join('')}</div>`).join('');
+  $('map').querySelectorAll('.opt').forEach(b=>b.onclick=()=>{pick[b.dataset.k]=b.dataset.id;S.pick=pick;save();drawMap();drawSim()})};
+const links=p=>{const L=[];
+  const homeish=['home','center'].includes(p.s1);
+  if(['zen','toku','iyo'].includes(p.s2)&&homeish)L.push('全日制の入試では、中学の調査書（成績・出欠など）が使われます。家での学びが成績評価に反映されるかは学校と相談を。<b>中2のうちに担任・進路の先生と話しておくと安心。</b>');
+  if(['zen','toku','iyo'].includes(p.s2))L.push('入学したあとに体調が合わなかったら、通信制などに<b>転入する道</b>もあります。最初の選択で全部が決まるわけではありません。');
+  if(p.s2==='hiru')L.push('昼間定時制は、ほかの部や通信制の単位も使えば3年で卒業できる仕組みがあります。体調がよくなれば、ペースを上げることもできます。');
+  if(['kotsu','shitsu','hiru','yakan'].includes(p.s2)&&['ondai','kyoin','univ'].includes(p.s3))L.push('定時制・通信制からも大学へ進めます。大学の入試に必要な科目を、高校のうちに選んでおくのがポイント。');
+  if(p.s2==='kounin')L.push('高卒認定に合格すれば、大学・短大・専門学校を受験できます。高校に在学しながら科目を受けることもでき、合格科目を高校の単位として認める学校もあります（学校ごとに判断）。');
+  if(p.s3==='ondai'&&!['iyo'].includes(p.s2))L.push('芸術科でなくても音大はめざせます。高校とは別に、ピアノの先生について実技と楽典を積み上げるのが近道。');
+  if(p.s3==='music')L.push('音楽の仕事は「大学・専門学校で学ぶ」「独学＋発信」「ほかの仕事と組み合わせる」など入り方がいろいろ。いまの「動画を見て弾けるようになる力」は、そのまま強みです。');
+  return L};
+const ageLine=p=>{const s2=p.s2&&find('s2',p.s2);const end2=(p.s2==='hiru'||p.s2==='yakan')?'15〜18/19歳':'15〜18歳';
+  return [['13歳〜','いま（中1）・中2・中3',p.s1&&find('s1',p.s1).name],[end2,'高校のころ',s2&&s2.name],['18歳〜','高校のあと',p.s3&&find('s3',p.s3).name],['20代〜','その先',p.s4&&find('s4',p.s4).name]]};
+const drawSim=()=>{const p=pick;const chosen=['s1','s2','s3'].filter(k=>p[k]).map(k=>find(k,p[k]));
+  if(!chosen.length){$('sim').innerHTML='<div class="card tape"><p class="muted">まずは左の「中学のあいだ」から、近いものを1つ選んでみよう。</p></div>';return}
+  const fit=Math.round(chosen.reduce((a,o)=>a+o.fit,0)/chosen.length/3*100);
+  const good=chosen.flatMap(o=>o.good),care=chosen.flatMap(o=>o.care),now=chosen.flatMap(o=>o.now).slice(0,4);
+  $('sim').innerHTML=`<div class="card tape m">
+   <h3>このルートの道のり</h3>
+   <ul class="timeline">${ageLine(p).map(([t,l,n])=>`<li><span class="t">${t}</span><span><span class="small">${l}</span><br>${n?esc(n):'<span class="muted">（まだ選んでいません）</span>'}</span></li>`).join('')}</ul>
+   ${p.s4==='d-free'?'':''}
+   <p style="margin-top:12px">朝の体調との相性（目安）</p><div class="meter"><i style="width:${fit}%"></i></div>
+   <p class="small">あくまで目安です。体調は変わっていくもの。実際にどうかは、見学や主治医との相談で確かめよう。</p>
+  </div>
+  <div class="grid2">
+   <div class="card tape y"><h3 class="b">良いところ</h3><ul class="tight">${good.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+   <div class="card"><h3 class="r">気をつけること</h3><ul class="tight">${care.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>
+  </div>
+  <div class="card tape"><h3>このルートのくわしい説明</h3>${chosen.map(o=>`<p><b>${esc(o.name)}</b><br>${esc(o.desc)}</p>`).join('')}</div>
+  ${links(p).map(x=>`<div class="note">${x}</div>`).join('')}
+  <div class="card tape m"><h3>いまからできること</h3><ul class="tight">${now.map(x=>`<li>${esc(x)}</li>`).join('')}</ul>
+   <div class="note red" style="margin-top:12px">進路は大事なこと。このルートを考えたら、<b>ひとりで決めずに、おうちの人に見せて話してみよう</b>。おじいちゃん・おばあちゃんに「どう思う？」と聞くのもおすすめです。</div>
+   <p style="margin-top:10px"><label for="rName">このルートに名前をつけて保存</label></p>
+   <div class="row"><input type="text" id="rName" placeholder="例：午後に通って音大ルート" style="max-width:320px"><button class="btn pri" id="saveRoute">保存</button><button class="btn" id="showRoute">おうちの人に見せる</button></div>
+  </div>`;
+  $('saveRoute').onclick=()=>{S.routes.push({name:$('rName').value||'ルート'+(S.routes.length+1),p:Object.assign({},p),date:today()});save();drawSaved();toast('保存しました')};
+  $('showRoute').onclick=()=>{const t=ageLine(p).filter(x=>x[2]).map(x=>`${x[0]}　${x[2]}`).join('<br>');openShow('こんな道を考えてみたよ。<br><br>'+t+'<br><br>どう思うか、いっしょに話したい。')}};
+const drawSaved=()=>{if(!S.routes.length)return;
+  $('saved').innerHTML=`<div class="grid2">${S.routes.map((r,i)=>`<div class="card tape y" style="margin:0"><h3>${esc(r.name)}</h3><p class="small">${r.date}</p><ul class="tight">${['s1','s2','s3','s4'].filter(k=>r.p[k]).map(k=>`<li>${esc(find(k,r.p[k]).name)}</li>`).join('')}</ul><div class="row"><button class="btn" data-l="${i}">マップで開く</button><button class="btn" data-d="${i}">消す</button></div></div>`).join('')}</div>`;
+  $('saved').querySelectorAll('[data-l]').forEach(b=>b.onclick=()=>{pick=Object.assign({},S.routes[b.dataset.l].p);S.pick=pick;save();drawMap();drawSim();window.scrollTo(0,0)});
+  $('saved').querySelectorAll('[data-d]').forEach(b=>b.onclick=()=>{if(b.dataset.c){S.routes.splice(+b.dataset.d,1);save();if(!S.routes.length)$('saved').innerHTML='<p class="small">保存したルートはありません。</p>';else drawSaved()}else{b.dataset.c=1;b.textContent='もう一度押すと消えます'}})};
+
+/* ---------- 学び直し ---------- */
+const SUBJ=[
+ {n:'数学（中1）',u:['正の数・負の数','文字と式','一次方程式','比例と反比例','平面図形','空間図形','データの活用']},
+ {n:'算数のふりかえり（小5・小6）',u:['小数・分数のかけ算わり算','割合と百分率','速さ','比','面積と体積']},
+ {n:'英語（中1）',u:['アルファベット・あいさつ','be動詞（am / is / are）','一般動詞','疑問詞（what / where など）','三人称単数（-s）','can','現在進行形','過去形']},
+ {n:'国語（中1）',u:['漢字（中1配当）','文節・品詞の入り口','説明文の読み方（段落と要点）','物語の読み方（気持ちの変化）','作文（自分の考えを書く）']},
+ {n:'理科（中1）',u:['植物のつくりとはたらき','動物のなかま','身のまわりの物質','光・音・力','大地の変化（火山・地震・地層）']},
+ {n:'社会（中1）',u:['世界の姿（緯度・経度・時差）','世界の諸地域','歴史：古代（縄文〜奈良）','歴史：中世（平安〜室町）']},
+ {n:'音楽（楽典）',u:['音符と休符の長さ','ト音記号・ヘ音記号の読み方','拍子とリズム','長調・短調','コード（和音）の基本']}];
+const stTxt=['まだ','やってみた','わかった'];
+const drawSubjects=()=>{$('subjects').innerHTML=SUBJ.map((s,si)=>{const done=s.u.reduce((a,u)=>a+(S.units[si+'-'+u]||0),0);const pct=Math.round(done/(s.u.length*2)*100);
+  return `<div class="card subj"><div class="row" style="justify-content:space-between"><h3>${s.n}</h3><span class="small">${pct}%</span></div><div class="meter" style="margin:6px 0 4px"><i style="width:${pct}%"></i></div>${s.u.map(u=>{const v=S.units[si+'-'+u]||0;return `<div class="unit"><span>${esc(u)}</span><button class="btn st${v}" data-k="${si}-${esc(u)}">${stTxt[v]}</button></div>`}).join('')}</div>`}).join('');
+  $('subjects').querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>{const k=b.dataset.k;S.units[k]=((S.units[k]||0)+1)%3;save();drawSubjects()});
+  $('tSubj').innerHTML=SUBJ.map(s=>`<option>${s.n}</option>`).join('')+'<option>ピアノ・音楽の練習</option><option>そのほか</option>'};
+let tLeft=900,tId=null,tStartAt=0;
+const tShow=()=>{$('tView').textContent=String(Math.floor(tLeft/60)).padStart(2,'0')+':'+String(tLeft%60).padStart(2,'0')};
+$('tStart').onclick=()=>{if(tId)return;tStartAt=Date.now();tId=setInterval(()=>{tLeft--;tShow();if(tLeft<=0){finish();toast('15分おつかれさま！')}},1000)};
+const finish=()=>{if(!tId)return;clearInterval(tId);tId=null;const m=Math.max(1,Math.round((Date.now()-tStartAt)/60000));S.logs.unshift({d:today(),s:$('tSubj').value,m,w:''});save();drawLogs();tLeft=900;tShow()};
+$('tStop').onclick=()=>{if(tId){finish();toast('記録しました')}};
+$('addLog').onclick=()=>{S.logs.unshift({d:today(),s:$('tSubj').value,m:15,w:''});save();drawLogs();toast('記録を足しました。分や内容はタップで直せます')};
+const drawLogs=()=>{if(!S.logs.length){$('logs').innerHTML='<p class="small">まだ記録はありません。</p>';return}
+  $('logs').innerHTML=S.logs.slice(0,12).map((l,i)=>`<div class="unit"><span>${l.d}　${esc(l.s)}<br><input type="text" data-w="${i}" value="${esc(l.w||'')}" placeholder="やったこと（例：一次方程式を5問）"></span><span class="row"><input type="text" data-m="${i}" value="${l.m}" style="width:4.5em" aria-label="分">分</span></div>`).join('')+(S.logs.length>12?`<p class="small">ほか${S.logs.length-12}件（コピーにはすべて入ります）</p>`:'');
+  $('logs').querySelectorAll('[data-w]').forEach(e=>e.onchange=()=>{S.logs[e.dataset.w].w=e.value;save()});
+  $('logs').querySelectorAll('[data-m]').forEach(e=>e.onchange=()=>{S.logs[e.dataset.m].m=parseInt(e.value)||0;save()})};
+$('copyLogs').onclick=()=>{const total=S.logs.reduce((a,l)=>a+(+l.m||0),0);const txt='家庭での学習記録\n合計 '+S.logs.length+'回・'+total+'分\n\n'+S.logs.slice().reverse().map(l=>`${l.d}\t${l.s}\t${l.m}分\t${l.w||''}`).join('\n');copy(txt,'学習記録をコピーしました')};
+
+/* ---------- 気持ちノート ---------- */
+const WORRY=[
+ {n:'勉強のおくれ',r:'おくれは「取りもどせるもの」です。中学の内容は、高校や高卒認定でもう一度学ぶ機会があります。まずは1単元ずつ。',who:'担任の先生、おうちの人'},
+ {n:'高校に行けるか',r:'高校には全日制・定時制・通信制など通い方がいろいろあり、体調に合わせて選べます。「進路マップ」でいっしょに見てみよう。',who:'おうちの人、中学の進路の先生'},
+ {n:'友だちのこと',r:'会えない時間があっても、つながりはなくなりません。手紙やメッセージなど、自分にできる形でいい。新しい場所で新しい友だちができる人も多いです。',who:'おうちの人、スクールカウンセラー'},
+ {n:'朝起きられない・体調',r:'起立性調節障害は体の病気で、気持ちが弱いせいではありません。体調のことは、主治医の先生に相談するのがいちばん確かです。',who:'主治医、おうちの人'},
+ {n:'家族に悪いと思う',r:'そう思えるのは、家族を大切に思っているから。おうちの人は、話してもらえることをうれしく思うはずです。',who:'おうちの人'},
+ {n:'将来がわからない',r:'大人でも将来はわからないもの。わからないまま少しずつ進んで、あとから道ができた人はたくさんいます。「ひとの物語」も読んでみて。',who:'おうちの人、おじいちゃん・おばあちゃん'},
+ {n:'学校の人にどう思われるか',r:'人がどう思うかは、自分では決められません。でも、自分がどう過ごすかは選べます。知ってほしいことがあれば、先生に伝えてもらう方法もあります。',who:'担任の先生、おうちの人'},
+ {n:'音楽を続けていいのか',r:'好きなことは、元気のもとで、将来の道にもなります。弾ける曲が増えたことは、立派な「学び」です。',who:'おうちの人'},
+ {n:'夜に眠れない',r:'眠れない夜はつらいですね。生活リズムのことは、主治医の先生に相談してみよう。',who:'主治医、おうちの人'},
+ {n:'なんとなく、つらい',r:'理由がわからなくても、つらいのは本当のこと。「なんとなくつらい」とそのまま話していいんです。',who:'おうちの人、スクールカウンセラー'}];
+let wSel=new Set();
+const drawWorries=()=>{$('worries').innerHTML=WORRY.map((w,i)=>`<button class="chip" data-i="${i}" aria-pressed="${wSel.has(i)}">${w.n}</button>`).join('');
+  $('worries').querySelectorAll('.chip').forEach(b=>b.onclick=()=>{const i=+b.dataset.i;wSel.has(i)?wSel.delete(i):wSel.add(i);drawWorries()});
+  $('worryResp').innerHTML=[...wSel].map(i=>`<div class="note"><b>${WORRY[i].n}</b><br>${WORRY[i].r}<br><span class="small">話せる人：${WORRY[i].who}</span></div>`).join('')};
+let lv=0;
+mkScale($('sLevel'),n=>{lv=n;$('levelMsg').innerHTML=n>=4?'<div class="note red"><b>それは大事なことだね。</b>大事なこと・重いことほど、ひとりで抱えないで。きょうか明日、おうちの人に「話したいことがある」とだけ伝えてみよう。下の「話しかけ方カード」も使ってね。</div>':n===3?'<div class="note">少し重めのことだね。書けたことがまず一歩。話せそうなときに、だれかに話してみよう。</div>':''},0);
+$('saveHeart').onclick=()=>{const t=$('hText').value.trim();if(!t&&!wSel.size){toast('書くか、気になることを選んでね');return}
+  S.notes.unshift({d:today(),t,lv,w:[...wSel].map(i=>WORRY[i].n)});save();$('hText').value='';drawNotes();toast(lv>=4?'のこしました。だれかに話してみてね':'のこしました')};
+const drawNotes=()=>{if(!S.notes.length)return;
+  $('hList').innerHTML=S.notes.slice(0,20).map((n,i)=>`<div class="unit"><span><span class="small">${n.d}${n.lv?'　大事さ'+n.lv:''}${n.w&&n.w.length?'　'+esc(n.w.join('・')):''}</span><br>${esc(n.t)}</span><span class="row"><button class="btn" data-s="${i}">見せて話す</button></span></div>`).join('');
+  $('hList').querySelectorAll('[data-s]').forEach(b=>b.onclick=()=>{const n=S.notes[b.dataset.s];openShow('聞いてほしいことがあるんだ。<br><br>'+esc(n.t||n.w.join('、'))+'<br><br>答えはいらないから、まず聞いてほしい。')})};
+const TALK=['ちょっと聞いてほしいことがあるんだけど、今いい？','うまく言えないけど、最近ちょっと不安なことがある。','答えはいらないから、聞いてくれるだけでいい。','進路のこと、いっしょに考えてほしい。','今日はしんどい。理由はうまく言えないけど、そばにいてほしい。','おじいちゃん（おばあちゃん）が中学生のころ、どんなことで悩んでた？'];
+$('talkCards').innerHTML=TALK.map((t,i)=>`<button class="opt" data-t="${i}" style="font-size:17px;padding:14px">${t}</button>`).join('');
+$('talkCards').querySelectorAll('[data-t]').forEach(b=>b.onclick=()=>openShow(TALK[b.dataset.t]));
+const openShow=h=>{$('showText').innerHTML=h;$('show').classList.add('on')};
+$('showClose').onclick=()=>$('show').classList.remove('on');
+
+/* ---------- ひとの物語 ---------- */
+const BUILTIN=[
+{"名前":"角野隼斗","分野":"音楽","時代":"今","愛媛四国":false,"説明":"ピアニスト（1995年〜）","はじめ":"子どものころからピアノを習い、大学では情報の研究をする道へ進んだ。","つまずき":"東京大学の大学院で学びながら、YouTubeでピアノ演奏を発信しはじめた。","その後":"2021年のショパン国際ピアノコンクールでセミファイナルに進出。研究・配信・演奏会と、一本道ではない音楽家になった。","ヒント":"音楽の道は、音大だけじゃない。"},
+{"名前":"久石譲","分野":"音楽","時代":"今","愛媛四国":false,"説明":"作曲家（1950年〜）","はじめ":"音楽大学で作曲を学び、最初は実験的な現代音楽をつくっていた。","つまずき":"前衛的な音楽だけでなく、CMやアニメなど、いろいろなジャンルの仕事に挑戦した。","その後":"宮崎駿監督の作品の音楽で広く知られ、世界で演奏される映画音楽の作曲家になった。","ヒント":"いろいろな仕事が、自分の音の幅を広げてくれる。"},
+{"名前":"フジコ・ヘミング","分野":"音楽","時代":"今","愛媛四国":false,"説明":"ピアニスト（1931年〜2024年）","はじめ":"母からピアノを習い、留学をめざしたが、国籍の事情で長いあいだ日本を出られなかった。","つまずき":"ヨーロッパで活動中、大事な演奏会の直前に病気で耳が聞こえにくくなり、長く無名のまま過ごした。","その後":"60代で日本のテレビ番組に紹介されて大きな注目を集め、世界の舞台で演奏した。","ヒント":"花ひらく時期は、人それぞれ。"},
+{"名前":"辻井伸行","分野":"音楽","時代":"今","愛媛四国":false,"説明":"ピアニスト（1988年〜）","はじめ":"生まれつき目が見えない。おもちゃのピアノで、聞いた曲を弾いてみせたのが始まり。","つまずき":"楽譜を目で読めないため、録音を何度も聞いて曲を覚える方法を工夫した。","その後":"2009年、アメリカのヴァン・クライバーン国際ピアノコンクールで優勝した。","ヒント":"自分に合った覚え方を見つければいい。"},
+{"名前":"Ado","分野":"音楽","時代":"今","愛媛四国":false,"説明":"歌手（2002年〜）","はじめ":"中学生のころから、歌い手としてネットに歌を投稿していた。","つまずき":"顔を出さず、自宅のクローゼットを録音ブースにして歌を録っていた。","その後":"17歳でメジャーデビュー。「うっせぇわ」が大ヒットし、世界ツアーも行った。","ヒント":"安心できる場所・やり方で表現していい。"},
+{"名前":"Ayase","分野":"音楽","時代":"今","愛媛四国":false,"説明":"作曲家・YOASOBI（1994年〜）","はじめ":"16歳でロックバンドを結成し、9年間活動を続けた。","つまずき":"重い病気で入院し、バンド活動を続けられなくなった。","その後":"入院中に「ひとりでもできる音楽」としてボカロ曲を作りはじめ、のちにYOASOBIを結成した。","ヒント":"できなくなったことの先に、新しい形が見つかる。"},
+{"名前":"ハラミちゃん","分野":"音楽","時代":"今","愛媛四国":false,"説明":"ポップスピアニスト（生年非公表）","はじめ":"4歳からピアノを習い、音楽の道をめざして音大に進んだ。","つまずき":"ピアニストの夢をあきらめて会社員に。体調をくずして会社に行けなくなった時期もあった。","その後":"先輩に誘われて弾いたストリートピアノの動画が話題になり、日本武道館で公演するまでに。","ヒント":"一度離れた「好き」に、別の形で戻ってこられる。"},
+{"名前":"米津玄師","分野":"音楽","時代":"今","愛媛四国":false,"説明":"シンガーソングライター（1991年〜）","はじめ":"中学生のころから、パソコンで曲づくりをしていた。","つまずき":"顔を出さず「ハチ」という名前で、ボーカロイドの曲をネットに投稿していた。","その後":"自分の声で歌う活動を始め、日本を代表するアーティストのひとりになった。","ヒント":"最初の一歩は、ひっそりでもいい。"},
+{"名前":"藤井風","分野":"音楽","時代":"今","愛媛四国":false,"説明":"シンガーソングライター（1997年〜）","はじめ":"幼いころから、父のすすめでピアノを習った。","つまずき":"12歳ごろからYouTubeにピアノのカバー動画を投稿し続けたが、すぐに有名になったわけではない。","その後":"2020年にデビュー。海外でも多くの人に聞かれるようになった。","ヒント":"コツコツ投稿した動画が、未来の名刺になる。"},
+{"名前":"藤原聡","分野":"音楽","時代":"今","愛媛四国":false,"説明":"Official髭男dism ボーカル（1991年〜）","はじめ":"島根の大学を出て、地元の銀行に就職した。","つまずき":"銀行員として働きながら、休みの日にバンド活動を続けた。","その後":"仕事をやめて上京し、「Pretender」などのヒットで全国に知られるバンドになった。","ヒント":"仕事と夢を、しばらく両方続ける道もある。"},
+{"名前":"ビリー・アイリッシュ","分野":"音楽","時代":"今","愛媛四国":false,"説明":"シンガーソングライター（2001年〜）","はじめ":"学校に通わず、家で学ぶ「ホームスクーリング」で育った。","つまずき":"兄といっしょに、自宅の寝室で曲をつくってネットに投稿していた。","その後":"10代でグラミー賞の主要部門を独占するアーティストになった。","ヒント":"学校の外でも、才能は育つ。"},
+{"名前":"テイラー・スウィフト","分野":"音楽","時代":"今","愛媛四国":false,"説明":"シンガーソングライター（1989年〜）","はじめ":"子どものころから詩や曲を書くのが好きだった。","つまずき":"歌手をめざして自分のデモを配って回ったが、なかなか契約できなかった。","その後":"家族とナッシュビルに移り住み、10代でデビュー。世界的なアーティストになった。","ヒント":"断られても、書き続けた曲が力になる。"},
+{"名前":"エド・シーラン","分野":"音楽","時代":"今","愛媛四国":false,"説明":"シンガーソングライター（1991年〜）","はじめ":"10代でロンドンに出て、小さな店やライブハウスで歌った。","つまずき":"年に何百回もライブをしながら、友人の家を泊まり歩く生活が続いた。","その後":"デビュー後、世界中で聞かれるシンガーになった。","ヒント":"小さな場所での経験が、大きな舞台を支える。"},
+{"名前":"レディー・ガガ","分野":"音楽","時代":"今","愛媛四国":false,"説明":"歌手・俳優（1986年〜）","はじめ":"子どものころからピアノを弾き、曲を書いていた。","つまずき":"大学を中退して小さなクラブで歌い、一度はレコード会社との契約を打ち切られた。","その後":"デビュー後に世界的なスターとなり、俳優としても評価されている。","ヒント":"打ち切られても、そこで終わりじゃない。"},
+{"名前":"スティーヴィー・ワンダー","分野":"音楽","時代":"今","愛媛四国":false,"説明":"ミュージシャン（1950年〜）","はじめ":"生まれてまもなく、目が見えなくなった。","つまずき":"ハーモニカやピアノ、ドラムを耳で覚えて、子どものころから演奏した。","その後":"11歳でレコード会社と契約し、数多くの名曲を生んだ。","ヒント":"ちがいは、そのまま個性になる。"},
+{"名前":"アンドレア・ボチェッリ","分野":"音楽","時代":"今","愛媛四国":false,"説明":"テノール歌手（1958年〜）","はじめ":"生まれつき目の病気があり、12歳で事故がもとで目がまったく見えなくなった。","つまずき":"大学で法律を学んで弁護士になり、夜はピアノバーで歌っていた。","その後":"30代で歌手デビューし、世界中で愛される歌手になった。","ヒント":"遠回りに見える時間も、歌を育てていた。"},
+{"名前":"水樹奈々","分野":"音楽","時代":"今","愛媛四国":true,"説明":"声優・歌手（1980年〜・愛媛県新居浜市出身）","はじめ":"新居浜で演歌歌手をめざして練習を重ねた。","つまずき":"高校から上京したが、歌手としてデビューするまでに時間がかかった。","その後":"声優としてデビューし、声優として初めて紅白歌合戦に出場。東京ドームでもライブを行った。","ヒント":"思っていた入口と、ちがう入口から夢に届くこともある。"},
+{"名前":"ベートーヴェン","分野":"音楽","時代":"昔","愛媛四国":false,"説明":"作曲家（1770年〜1827年）","はじめ":"子どものころから音楽の才能を見こまれ、厳しく練習させられた。","つまずき":"20代後半から耳が聞こえにくくなり、音楽家として深く悩んだ。","その後":"それでも作曲を続け、耳がほとんど聞こえなくなってから交響曲第9番などを完成させた。","ヒント":"できなくなったことがあっても、別の方法で音楽と向きあえる。"},
+{"名前":"ショパン","分野":"音楽","時代":"昔","愛媛四国":false,"説明":"作曲家・ピアニスト（1810年〜1849年）","はじめ":"ポーランドで「神童」と呼ばれて育った。","つまずき":"20歳で故郷を離れた直後に祖国で戦争が起き、二度と戻れなかった。体も弱かった。","その後":"パリで作曲や演奏、ピアノの先生を続け、「ピアノの詩人」と呼ばれた。","ヒント":"離れた場所でも、自分の音を磨ける。"},
+{"名前":"チャイコフスキー","分野":"音楽","時代":"昔","愛媛四国":false,"説明":"作曲家（1840年〜1893年）","はじめ":"法律の学校を出て、役所で働いていた。","つまずき":"音楽は好きだったが、本格的に学びはじめたのは20歳を過ぎてから。","その後":"音楽院で学び、「白鳥の湖」「くるみ割り人形」などの名曲を残した。","ヒント":"好きなことを本気で始めるのに、遅すぎることはない。"},
+{"名前":"ラフマニノフ","分野":"音楽","時代":"昔","愛媛四国":false,"説明":"作曲家・ピアニスト（1873年〜1943年）","はじめ":"若くして作曲家として期待された。","つまずき":"交響曲第1番の初演が大失敗し、自信を失って長く曲が書けなくなった。","その後":"医師の支えで立ち直り、ピアノ協奏曲第2番を完成させた。","ヒント":"立ち止まって回復する時間も、道のりの一部。"},
+{"名前":"宮崎駿","分野":"アート","時代":"今","愛媛四国":false,"説明":"アニメーション映画監督（1941年〜）","はじめ":"マンガ家になりたかったが、大学を出てアニメ会社に入った。","つまずき":"長いあいだ、ほかの人の作品をつくる仕事を続けた。","その後":"40代で「風の谷のナウシカ」を監督し、のちに世界中で愛される作品を生んだ。","ヒント":"下積みの時間に、自分の世界が育っていた。"},
+{"名前":"新海誠","分野":"アート","時代":"今","愛媛四国":false,"説明":"アニメーション映画監督（1973年〜）","はじめ":"大学を出て、ゲーム会社で働いた。","つまずき":"会社で働きながら、ほぼひとりでアニメーション作品をつくった。","その後":"「君の名は。」などで、日本だけでなく世界でも知られる監督になった。","ヒント":"ひとりで始めたことが、大きな作品につながる。"},
+{"名前":"細田守","分野":"アート","時代":"今","愛媛四国":false,"説明":"アニメーション映画監督（1967年〜）","はじめ":"アニメ会社に入り、アニメーターとして働いた。","つまずき":"大きな映画の監督に選ばれたが、途中でその仕事から離れることになった。","その後":"その後「時をかける少女」「サマーウォーズ」などを監督し、高く評価された。","ヒント":"うまくいかなかった仕事のあとに、自分の代表作が生まれた。"},
+{"名前":"庵野秀明","分野":"アート","時代":"今","愛媛四国":false,"説明":"映像作家・アニメ監督（1960年〜）","はじめ":"芸術大学で仲間と自主制作のアニメや特撮をつくっていた。","つまずき":"大学を途中で離れ、アニメの現場に飛びこんだ。","その後":"「新世紀エヴァンゲリオン」や「シン・ゴジラ」などを手がけた。","ヒント":"好きなものを仲間とつくることから、道がひらけた。"},
+{"名前":"手塚治虫","分野":"アート","時代":"今","愛媛四国":false,"説明":"マンガ家（1928年〜1989年）","はじめ":"子どものころから昆虫とマンガが大好きだった。","つまずき":"大学で医学を学び医師の資格もとったが、マンガ家になるかどうかで迷った。","その後":"マンガ家の道を選び、「鉄腕アトム」「ブラック・ジャック」などを生んだ。","ヒント":"学んだことは、別の道でも生きてくる。"},
+{"名前":"やなせたかし","分野":"アート","時代":"今","愛媛四国":true,"説明":"マンガ家・絵本作家（1919年〜2013年・高知県育ち）","はじめ":"デザインの学校で学び、会社でデザインの仕事をしていた。","つまずき":"マンガ家として、なかなか代表作が生まれない時期が長く続いた。","その後":"50代で「アンパンマン」の絵本を出版。アニメが始まったのは69歳のときだった。","ヒント":"遅咲きでも、大きな花がひらく。"},
+{"名前":"水木しげる","分野":"アート","時代":"今","愛媛四国":false,"説明":"マンガ家（1922年〜2015年）","はじめ":"子どものころから絵が好きで、妖怪の話を聞いて育った。","つまずき":"戦争で左腕を失い、帰国後も紙芝居や貸本マンガで貧しい時期が続いた。","その後":"40代で「ゲゲゲの鬼太郎」などがヒットし、妖怪マンガの第一人者になった。","ヒント":"つらい時期も、描くことをやめなかった。"},
+{"名前":"草間彌生","分野":"アート","時代":"今","愛媛四国":false,"説明":"芸術家（1929年〜）","はじめ":"子どものころから、見えるものや心の中の景色を絵に描いていた。","つまずき":"心の病気と向きあいながら、20代でひとりアメリカにわたって作品をつくった。","その後":"水玉の作品で世界的な芸術家になり、90代になっても制作を続けている。","ヒント":"自分の見え方を、そのまま作品にしていい。"},
+{"名前":"安藤忠雄","分野":"アート","時代":"今","愛媛四国":false,"説明":"建築家（1941年〜）","はじめ":"高校時代はプロボクサーとして試合に出ていた。","つまずき":"大学には進まず、本や旅で建築を独学した。","その後":"独特なコンクリート建築で世界的に評価され、東京大学の教授もつとめた。","ヒント":"学校に行かなくても、学ぶ方法はある。"},
+{"名前":"ヨシタケシンスケ","分野":"アート","時代":"今","愛媛四国":false,"説明":"絵本作家（1973年〜）","はじめ":"会社員として働きながら、イラストを描いていた。","つまずき":"自分は絵本作家になるとは思っていなかったという。","その後":"40歳で「りんごかもしれない」を出版し、人気絵本作家になった。","ヒント":"小さな落書きが、大きな仕事になる。"},
+{"名前":"片岡鶴太郎","分野":"アート","時代":"今","愛媛四国":false,"説明":"俳優・画家（1954年〜）","はじめ":"お笑い芸人として、テレビで人気者になった。","つまずき":"人気が続くなかで、「自分は何をしたいのか」に悩んだ。","その後":"ボクシング、俳優、そして40歳ごろから絵を描きはじめ、画家としても活動している。","ヒント":"何歳からでも、新しい自分を始められる。"},
+{"名前":"ヴェラ・ウォン","分野":"アート","時代":"今","愛媛四国":false,"説明":"ファッションデザイナー（1949年〜）","はじめ":"フィギュアスケートでオリンピックをめざしていた。","つまずき":"代表選考に入れず、スケートの道をあきらめた。ファッション雑誌の編集者として働いた。","その後":"40歳でウエディングドレスのデザイナーとして独立し、世界的なブランドを築いた。","ヒント":"あきらめた夢の経験が、次の夢を支える。"},
+{"名前":"フリーダ・カーロ","分野":"アート","時代":"今","愛媛四国":false,"説明":"画家（1907年〜1954年・メキシコ）","はじめ":"6歳のとき病気で右足が不自由になった。","つまずき":"18歳でバスの事故にあい大けがをして、長くベッドの上で過ごした。","その後":"寝たまま鏡を見て自画像を描きはじめ、世界的な画家になった。","ヒント":"動けない時間に、描く道が始まった。"},
+{"名前":"ウォルト・ディズニー","分野":"アート","時代":"今","愛媛四国":false,"説明":"アニメーション制作者（1901年〜1966年）","はじめ":"新聞配達をしながら、絵を学んだ。","つまずき":"最初に作った会社がつぶれ、つくったキャラクターの権利まで失った。","その後":"その後ミッキーマウスを生み出し、世界中で愛される作品をつくった。","ヒント":"失ったものの先に、新しいキャラクターが生まれた。"},
+{"名前":"葛飾北斎","分野":"アート","時代":"昔","愛媛四国":false,"説明":"浮世絵師（1760年〜1849年）","はじめ":"若いころは師匠のもとを離れるなど、なかなか安定しなかった。","つまずき":"名前を何度も変え、引っこしは90回以上と言われる。描き方も何度も変えた。","その後":"代表作「富嶽三十六景」は70歳を過ぎてから。それでも「まだうまくなれる」と言いつづけた。","ヒント":"うまくいかない時期も、すべて練習になる。"},
+{"名前":"グランマ・モーゼス","分野":"アート","時代":"昔","愛媛四国":false,"説明":"画家（1860年〜1961年・アメリカ）","はじめ":"農家で働き、家族を支えて暮らしていた。","つまずき":"70代で手が痛み、好きだった刺しゅうができなくなった。","その後":"かわりに絵を描きはじめ、80歳で初めての個展。100歳まで描き続けた。","ヒント":"できなくなったことの代わりに、新しい好きが見つかる。"},
+{"名前":"レオナルド・ダ・ヴィンチ","分野":"アート","時代":"昔","愛媛四国":false,"説明":"芸術家・科学者（1452年〜1519年）","はじめ":"正式な学校教育はほとんど受けず、工房で働きながら学んだ。","つまずき":"興味が次々に移り、完成しなかった作品も多い。","その後":"「モナ・リザ」などの絵だけでなく、解剖や機械の研究でも名前を残した。","ヒント":"興味が広いことは、弱点じゃない。"},
+{"名前":"ココ・シャネル","分野":"アート","時代":"昔","愛媛四国":false,"説明":"ファッションデザイナー（1883年〜1971年）","はじめ":"子どものころ母を亡くし、修道院の施設で育ち、そこで裁縫を覚えた。","つまずき":"歌手をめざした時期もあったが、うまくいかなかった。","その後":"帽子の店から始めて、動きやすい服で女性のファッションを変えた。","ヒント":"身につけた小さな技術が、未来を変えた。"},
+{"名前":"村上春樹","分野":"ことば","時代":"今","愛媛四国":false,"説明":"作家（1949年〜）","はじめ":"大学時代からジャズが好きで、卒業前にジャズ喫茶を開いた。","つまずき":"お店の仕事に追われ、作家になるとは考えていなかった。","その後":"29歳のとき、ふと小説を書こうと思い立った。作品は50以上の言語に翻訳されている。","ヒント":"思いがけない瞬間に、道が見えることもある。"},
+{"名前":"東野圭吾","分野":"ことば","時代":"今","愛媛四国":false,"説明":"作家（1958年〜）","はじめ":"大学で電気工学を学び、自動車部品の会社でエンジニアとして働いた。","つまずき":"会社で働きながら小説を書き、新人賞に応募しては落選した。","その後":"江戸川乱歩賞を受賞してデビュー。たくさんのミステリーが映画やドラマになった。","ヒント":"落選も、書く力をきたえる時間。"},
+{"名前":"宮部みゆき","分野":"ことば","時代":"今","愛媛四国":false,"説明":"作家（1960年〜）","はじめ":"高校を出て、法律事務所で働いた。","つまずき":"働きながら、小説の書き方を教える教室に通った。","その後":"「火車」「模倣犯」などで人気作家となり、ファンタジーや時代小説も書いている。","ヒント":"働きながら、少しずつ学べばいい。"},
+{"名前":"湊かなえ","分野":"ことば","時代":"今","愛媛四国":false,"説明":"作家（1973年〜）","はじめ":"高校の講師などとして働いた。","つまずき":"結婚後、家事のあいまに少しずつ小説を書きはじめた。","その後":"デビュー作「告白」が大ヒットし、映画にもなった。","ヒント":"すき間の時間からでも、物語は生まれる。"},
+{"名前":"あさのあつこ","分野":"ことば","時代":"今","愛媛四国":false,"説明":"児童文学作家（1954年〜）","はじめ":"中学生のころから作家になりたいと思っていた。","つまずき":"子育てをしながら書き続け、なかなか大きな作品は出せなかった。","その後":"40代で「バッテリー」を出版し、多くの中高生に読まれた。","ヒント":"夢を持ち続けることも、立派な努力。"},
+{"名前":"角野栄子","分野":"ことば","時代":"今","愛媛四国":false,"説明":"児童文学作家（1935年〜）","はじめ":"24歳のとき、海外移住でブラジルにわたった。","つまずき":"作家になるとは思っていなかった。デビューは35歳。","その後":"50歳で「魔女の宅急便」を出版。のちに国際アンデルセン賞を受賞した。","ヒント":"いろいろな経験が、物語の材料になる。"},
+{"名前":"伊坂幸太郎","分野":"ことば","時代":"今","愛媛四国":false,"説明":"作家（1971年〜）","はじめ":"大学を出て、システムエンジニアとして会社で働いた。","つまずき":"働きながら書いて応募を続けた。","その後":"デビュー後、「ゴールデンスランバー」などで人気作家になった。","ヒント":"会社で働く経験も、物語にいきる。"},
+{"名前":"原田マハ","分野":"ことば","時代":"今","愛媛四国":false,"説明":"作家（1962年〜）","はじめ":"美術が大好きで、美術館などで働いた。","つまずき":"作家としてデビューしたのは40代になってから。","その後":"美術の世界を描く小説で人気作家になった。","ヒント":"好きな分野で働いた経験が、作品の武器になる。"},
+{"名前":"松本清張","分野":"ことば","時代":"今","愛媛四国":false,"説明":"作家（1909年〜1992年）","はじめ":"家が貧しく、小学校を卒業してすぐ働いた。","つまずき":"印刷工や新聞社の仕事をしながら、独学で本を読みつづけた。","その後":"40代で芥川賞を受賞し、社会派ミステリーの第一人者になった。","ヒント":"学歴がなくても、読むことが力になる。"},
+{"名前":"俵万智","分野":"ことば","時代":"今","愛媛四国":false,"説明":"歌人（1962年〜）","はじめ":"大学で短歌に出会った。","つまずき":"高校の国語の先生として働きながら、短歌をつくり続けた。","その後":"24歳で出した歌集「サラダ記念日」が大ベストセラーになった。","ヒント":"日常の言葉が、だれかの心に届く。"},
+{"名前":"夏井いつき","分野":"ことば","時代":"今","愛媛四国":true,"説明":"俳人（1957年〜・松山を拠点に活動）","はじめ":"中学校の国語の先生として働いた。","つまずき":"先生をやめて、俳句の道に進むことを決めた。","その後":"松山を拠点に、テレビ番組や「俳句甲子園」などで俳句の楽しさを広めている。","ヒント":"安定した道から降りる勇気も、ひとつの選択。"},
+{"名前":"大江健三郎","分野":"ことば","時代":"今","愛媛四国":true,"説明":"作家（1935年〜2023年・愛媛県内子町出身）","はじめ":"愛媛の森に囲まれた村で育ち、松山の高校を経て東京の大学へ進んだ。","つまずき":"障害をもって生まれた長男と生きる日々に、迷いながら向きあった。","その後":"その経験を作品の大きなテーマとし、1994年にノーベル文学賞を受賞した。","ヒント":"家族と向きあう日々が、深い言葉を生んだ。"},
+{"名前":"紫式部","分野":"ことば","時代":"昔","愛媛四国":false,"説明":"作家（970年代ごろ〜不明）","はじめ":"父から漢文を学び、学問好きな少女だった。","つまずき":"結婚してまもなく、夫を亡くした。","その後":"悲しみのなかで物語を書きはじめ、「源氏物語」は千年読みつがれている。","ヒント":"つらい時期に書いたものが、千年残った。"},
+{"名前":"正岡子規","分野":"ことば","時代":"昔","愛媛四国":true,"説明":"俳人・歌人（1867年〜1902年・松山出身）","はじめ":"松山で育ち、東京の大学へ進むが、のちに中退した。","つまずき":"若くして結核にかかり、やがて病気のためにほとんど寝たまま過ごすようになった。","その後":"病床から俳句や短歌を新しくする活動を続け、「病牀六尺」などを残した。","ヒント":"からだが思うように動かなくても、見る・感じる・書くことで世界は広がる。"},
+{"名前":"夏目漱石","分野":"ことば","時代":"昔","愛媛四国":true,"説明":"作家（1867年〜1916年）","はじめ":"英語の先生として、松山の中学校に赴任したこともある。","つまずき":"イギリス留学中は心身ともに苦しみ、帰国後も悩みが続いた。","その後":"38歳ごろ「吾輩は猫である」で作家デビュー。松山での経験は「坊っちゃん」に生かされた。","ヒント":"つらかった経験も、あとで作品の力になる。"},
+{"名前":"宮沢賢治","分野":"ことば","時代":"昔","愛媛四国":false,"説明":"詩人・童話作家（1896年〜1933年）","はじめ":"岩手の農学校で先生をしながら、詩や童話を書いた。","つまずき":"生きているあいだに出版できた本はごくわずかで、ほとんど評価されなかった。","その後":"亡くなったあと「銀河鉄道の夜」などが広く読まれ、いまも愛されている。","ヒント":"評価されるのが、ずっとあとのこともある。"},
+{"名前":"アンデルセン","分野":"ことば","時代":"昔","愛媛四国":false,"説明":"童話作家（1805年〜1875年・デンマーク）","はじめ":"貧しい靴職人の家に生まれた。","つまずき":"14歳でひとり都会に出て、歌手や俳優をめざしたが、うまくいかなかった。","その後":"童話を書きはじめ、「みにくいアヒルの子」「人魚姫」などが世界中で読まれている。","ヒント":"夢のかたちが変わっても、才能は生かせる。"},
+{"名前":"アガサ・クリスティ","分野":"ことば","時代":"昔","愛媛四国":false,"説明":"推理作家（1890年〜1976年・イギリス）","はじめ":"学校にはほとんど通わず、家で本を読んで育った。","つまずき":"最初の推理小説は、いくつもの出版社に断られた。","その後":"薬局で働いた知識を生かした作品などで、「ミステリーの女王」と呼ばれた。","ヒント":"断られても、書いたものは消えない。"},
+{"名前":"江戸川乱歩","分野":"ことば","時代":"昔","愛媛四国":false,"説明":"推理作家（1894年〜1965年）","はじめ":"大学を出たあと、仕事が長続きしなかった。","つまずき":"古本屋、屋台など、十数回も仕事を変えたと言われる。","その後":"29歳ごろ作家デビューし、「怪人二十面相」などで日本の推理小説の父と呼ばれた。","ヒント":"転々とした経験が、物語のネタになった。"},
+{"名前":"リオネル・メッシ","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"サッカー選手（1987年〜・アルゼンチン）","はじめ":"10歳ごろ、成長ホルモンの病気と診断され、毎日注射で治療を続けた。","つまずき":"治療を支えてくれるクラブを求めて、13歳で家族とスペインにわたった。","その後":"小柄な体を生かしたプレーで、世界最高の選手のひとりになった。","ヒント":"病気と向きあいながらでも、夢は続けられる。"},
+{"名前":"上原浩治","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"野球選手（1975年〜）","はじめ":"高校時代は控えの投手で、目立つ選手ではなかった。","つまずき":"大学受験に失敗して浪人。体育の先生をめざして勉強した。","その後":"大学で力をのばし、プロ野球からメジャーリーグへ。ワールドシリーズ優勝も経験した。","ヒント":"遅れて花ひらく人もいる。"},
+{"名前":"イチロー","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"野球選手（1973年〜）","はじめ":"高校からドラフト4位でプロ野球に入った。","つまずき":"独特なバッティングフォームを変えるように言われ、一軍に定着できない時期があった。","その後":"自分のフォームを信じて続け、メジャーリーグでも歴史的な記録を残した。","ヒント":"自分に合うやり方を、信じていい。"},
+{"名前":"三浦知良","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"サッカー選手（1967年〜）","はじめ":"サッカー選手になる夢をもっていた。","つまずき":"15歳で高校をやめ、ひとりでブラジルにわたった。言葉も生活もわからない中で練習した。","その後":"ブラジルでプロになり、帰国後は日本のサッカー人気を引っぱった。50代になってもプレーを続けている。","ヒント":"ちがう場所に飛びこむ選択肢もある。"},
+{"名前":"長友佑都","分野":"スポーツ","時代":"今","愛媛四国":true,"説明":"サッカー選手（1986年〜・愛媛県西条市出身）","はじめ":"西条で育ち、高校は福岡のサッカー強豪校に進んだ。","つまずき":"大学でけが（腰の病気）をして試合に出られず、応援席で太鼓をたたいていた時期がある。","その後":"そこから体をきたえ直し、日本代表やイタリアの名門クラブで活躍した。","ヒント":"応援席にいる時間も、ムダじゃない。"},
+{"名前":"本田圭佑","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"サッカー選手（1986年〜）","はじめ":"Jリーグのクラブの中学生チームで練習した。","つまずき":"高校生のチームに上がれず、別の道を選ぶことになった。","その後":"石川県の高校で力をつけ、日本代表としてワールドカップで活躍した。","ヒント":"選ばれなかったことが、次の場所を教えてくれる。"},
+{"名前":"中村憲剛","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"サッカー選手（1980年〜）","はじめ":"小柄で、強豪校のスター選手ではなかった。","つまずき":"大学も強豪とは言えないチームで、プロになるのは難しいと言われた。","その後":"練習参加から川崎フロンターレに入り、のちにJリーグの最優秀選手に選ばれた。","ヒント":"注目されていなくても、力はのばせる。"},
+{"名前":"羽生結弦","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"フィギュアスケーター（1994年〜）","はじめ":"小さいころから小児ぜんそくがあった。","つまずき":"2011年の東日本大震災で、練習していたリンクが使えなくなった。","その後":"オリンピックで2大会連続の金メダル。いまはプロとして新しい表現を続けている。","ヒント":"体の弱さや困難の中でも、表現は磨ける。"},
+{"名前":"高橋大輔","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"フィギュアスケーター（1986年〜）","はじめ":"日本の男子フィギュアの期待を背負っていた。","つまずき":"2008年に右ひざの大けがをして、長いリハビリが必要になった。","その後":"けがから復帰し、2010年のオリンピックで日本の男子として初めてメダルをとった。","ヒント":"回り道のリハビリが、強さになった。"},
+{"名前":"池江璃花子","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"競泳選手（2000年〜）","はじめ":"10代で日本記録を次々にぬりかえた。","つまずき":"18歳のとき、白血病と診断され、長い治療が必要になった。","その後":"治療のあと競技に戻り、オリンピックの代表にも選ばれた。","ヒント":"休むことも、前に進むための時間。"},
+{"名前":"大坂なおみ","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"テニス選手（1997年〜）","はじめ":"テニスで四大大会に何度も優勝した。","つまずき":"心の不調を公表し、試合を休むことを選んだ。","その後":"休養や出産を経て、ふたたびコートに戻った。","ヒント":"つらいと言えることは、強さのひとつ。"},
+{"名前":"錦織圭","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"テニス選手（1989年〜）","はじめ":"13歳でアメリカのテニスアカデミーに留学した。","つまずき":"何度もけがで試合を休み、長い離脱も経験した。","その後":"2014年の全米オープンで、アジア出身の男子で初めて決勝に進んだ。","ヒント":"けがと付き合いながら、ねばり強く戻ってくる。"},
+{"名前":"国枝慎吾","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"車いすテニス選手（1984年〜）","はじめ":"9歳のとき病気で、車いすで生活するようになった。","つまずき":"11歳で車いすテニスを始め、練習を重ねた。","その後":"パラリンピックで金メダルを4つ。四大大会とパラリンピックすべてを制した。","ヒント":"できることの中に、夢中になれるものがある。"},
+{"名前":"道下美里","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"視覚障害マラソン選手（1977年〜）","はじめ":"中学生のとき目の病気になり、のちに両目がほとんど見えなくなった。","つまずき":"見えないなかで走りはじめ、伴走者といっしょに練習した。","その後":"東京パラリンピックの女子マラソンで金メダルをとった。","ヒント":"だれかといっしょに走れば、遠くまで行ける。"},
+{"名前":"北口榛花","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"やり投げ選手（1998年〜）","はじめ":"高校からやり投げを本格的に始めた。","つまずき":"大学で指導してくれるコーチがいなくなり、どう練習すればいいかわからなかった。","その後":"自分からチェコのコーチに連絡して指導をお願いし、世界陸上とオリンピックで金メダルをとった。","ヒント":"助けがほしいときは、自分から声をかけていい。"},
+{"名前":"三笘薫","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"サッカー選手（1997年〜）","はじめ":"高校生のとき、プロ入りの話があった。","つまずき":"すぐプロにならず、大学で学ぶ道を選んだ。","その後":"大学でドリブルを研究し、イングランドのプレミアリーグで活躍した。","ヒント":"回り道に見える選択が、自分の武器を育てる。"},
+{"名前":"小平奈緒","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"スピードスケート選手（1986年〜）","はじめ":"地元・長野の大学で、恩師のもとで練習した。","つまずき":"卒業するとき、所属する会社やチームが決まらなかった。","その後":"地元の病院が支援を申し出て、競技を続けられた。オリンピックで金メダルをとった。","ヒント":"手をさしのべてくれる人は、きっといる。"},
+{"名前":"野茂英雄","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"野球選手（1968年〜）","はじめ":"高校時代は無名で、社会人チームで力をつけた。","つまずき":"メジャーリーグに挑戦するとき、多くの批判を受けた。","その後":"アメリカで新人王になり、日本人選手がメジャーに挑戦する道をひらいた。","ヒント":"前例がない道を、自分がつくることもできる。"},
+{"名前":"松山英樹","分野":"スポーツ","時代":"今","愛媛四国":true,"説明":"プロゴルファー（1992年〜・松山市出身）","はじめ":"松山で育ち、父の影響でゴルフを始めた。","つまずき":"中学のとき、ゴルフのために高知の学校へ移った。","その後":"2021年、マスターズでアジア出身の男子として初めて優勝した。","ヒント":"地元から、世界へ。"},
+{"名前":"渡辺雄太","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"バスケットボール選手（1994年〜）","はじめ":"高校を出て、アメリカの大学に進んだ。","つまずき":"NBAに入ったときは、正式な選手ではなく「2way契約」という立場からのスタートだった。","その後":"少しずつ出場機会をつかみ、NBAで長くプレーした。","ヒント":"小さな入口からでも、中に入れば道は広がる。"},
+{"名前":"大橋悠依","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"競泳選手（1995年〜）","はじめ":"大学で競泳を続けた。","つまずき":"体調不良が続いて記録が伸びず、やめようと思ったこともある。","その後":"原因だった貧血を治療して力を取りもどし、東京オリンピックで金メダルを2つとった。","ヒント":"つらさの原因がわかれば、対策できることもある。"},
+{"名前":"澤穂希","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"サッカー選手（1978年〜）","はじめ":"15歳で日本代表に選ばれた。","つまずき":"女子サッカーの人気が低い時代が続き、所属していたアメリカのリーグもなくなった。","その後":"2011年の女子ワールドカップで日本を優勝に導いた。","ヒント":"注目されない時期も、続けた人が流れを変える。"},
+{"名前":"佐藤琢磨","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"レーシングドライバー（1977年〜）","はじめ":"学生時代は自転車競技の選手だった。","つまずき":"レースを始めたのは20歳ごろで、遅いスタートと言われた。","その後":"F1で走り、のちにアメリカのインディ500で2回優勝した。","ヒント":"スタートが遅くても、ゴールには届く。"},
+{"名前":"マイケル・ジョーダン","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"バスケットボール選手（1963年〜・アメリカ）","はじめ":"バスケットボールが大好きだった。","つまずき":"高校2年生のとき、学校の代表チームに選ばれなかった。","その後":"くやしさをバネに練習を重ね、史上最高の選手のひとりと呼ばれるようになった。","ヒント":"落ちた日から、練習が始まる。"},
+{"名前":"ウサイン・ボルト","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"陸上選手（1986年〜・ジャマイカ）","はじめ":"背が高く、子どものころはクリケットやサッカーもしていた。","つまずき":"背骨が曲がる病気（側弯症）があり、体のバランスに苦労した。","その後":"体幹をきたえて、100mと200mの世界記録をつくった。","ヒント":"体の特徴と付き合う方法は、見つけられる。"},
+{"名前":"シモーネ・バイルズ","分野":"スポーツ","時代":"今","愛媛四国":false,"説明":"体操選手（1997年〜・アメリカ）","はじめ":"体操で世界一の選手になった。","つまずき":"東京オリンピックで、心の不調から競技を途中で棄権した。","その後":"休んだあとに復帰し、パリオリンピックで金メダルをとった。","ヒント":"休むと決めることも、勇気ある選択。"},
+{"名前":"山中伸弥","分野":"研究","時代":"今","愛媛四国":false,"説明":"医学研究者（1962年〜）","はじめ":"整形外科の医師になったが、手術が思うようにできず、挫折を味わった。","つまずき":"研究者に転向。研究でも思うように進まない時期が長く続いた。","その後":"iPS細胞をつくることに成功し、2012年にノーベル生理学・医学賞を受賞した。","ヒント":"向いていないと感じたら、方向を変えていい。"},
+{"名前":"中村修二","分野":"研究","時代":"今","愛媛四国":true,"説明":"研究者（1954年〜・愛媛県出身）","はじめ":"愛媛で育ち、徳島大学を出て、徳島の会社で研究者になった。","つまずき":"大きな研究所でも難しいと言われた青色LEDの研究に、少ない設備で取りくみ続けた。","その後":"青色LEDの実用化に成功し、2014年にノーベル物理学賞を受賞した。","ヒント":"地方からでも、自分のやり方で世界に届く。"},
+{"名前":"真鍋淑郎","分野":"研究","時代":"今","愛媛四国":true,"説明":"気象学者（1931年〜・愛媛県四国中央市出身）","はじめ":"医者の家に生まれたが、自分は医者に向いていないと考え、物理の道へ。","つまずき":"日本では研究の場が限られ、20代でアメリカにわたった。","その後":"コンピューターで地球の気候を予測する研究で、90歳でノーベル物理学賞を受賞した。","ヒント":"向いている道は、自分で探していい。"},
+{"名前":"大村智","分野":"研究","時代":"今","愛媛四国":false,"説明":"化学者（1935年〜）","はじめ":"大学を出て、夜間の定時制高校で理科の先生をした。","つまずき":"先生をしながら、夜は大学院で研究を学び直した。","その後":"微生物から薬を見つける研究で多くの人を病気から救い、2015年にノーベル賞を受賞した。","ヒント":"定時制の教室から、世界を救う研究が始まった。"},
+{"名前":"大隅良典","分野":"研究","時代":"今","愛媛四国":false,"説明":"生物学者（1945年〜）","はじめ":"人があまり研究していない「酵母の液胞」に興味をもった。","つまずき":"40歳を過ぎてやっと自分の研究室をもった。地味な研究だと思われていた。","その後":"細胞の「オートファジー」のしくみを明らかにし、2016年にノーベル賞を受賞した。","ヒント":"人と同じでなくていい。"},
+{"名前":"天野浩","分野":"研究","時代":"今","愛媛四国":false,"説明":"物理学者（1960年〜）","はじめ":"大学院で青色LEDの研究を始めた。","つまずき":"実験の失敗は1500回を超えたと言われる。","その後":"青色LEDを実現する技術で、2014年にノーベル物理学賞を受賞した。","ヒント":"失敗の数は、挑戦した数。"},
+{"名前":"田中耕一","分野":"研究","時代":"今","愛媛四国":false,"説明":"化学者・会社員（1959年〜）","はじめ":"大学を出て、京都の会社で研究者として働いた。","つまずき":"大学院も出ていない会社員の研究者で、まちがえて材料を混ぜてしまったこともあった。","その後":"その「まちがい」から大発見が生まれ、2002年にノーベル化学賞を受賞した。","ヒント":"失敗だと思ったことが、発見になることがある。"},
+{"名前":"小柴昌俊","分野":"研究","時代":"今","愛媛四国":false,"説明":"物理学者（1926年〜2020年）","はじめ":"大学の物理学科で学んだ。","つまずき":"成績はかなり下のほうで卒業したと、本人が語っている。","その後":"ニュートリノの観測で、2002年にノーベル物理学賞を受賞した。","ヒント":"成績だけで、未来は決まらない。"},
+{"名前":"益川敏英","分野":"研究","時代":"今","愛媛四国":false,"説明":"物理学者（1940年〜2021年）","はじめ":"子どものころから、考えることが大好きだった。","つまずき":"英語がとても苦手で、海外にほとんど行かなかった。","その後":"素粒子の研究で2008年にノーベル物理学賞を受賞し、受賞講演は日本語で行った。","ヒント":"苦手があっても、得意で勝負できる。"},
+{"名前":"スティーヴン・ホーキング","分野":"研究","時代":"今","愛媛四国":false,"説明":"物理学者（1942年〜2018年・イギリス）","はじめ":"大学で宇宙の研究をしていた。","つまずき":"21歳で体が少しずつ動かなくなる病気と診断され、あと数年の命と言われた。","その後":"車いすと音声装置を使いながら、70代まで宇宙の研究を続けた。","ヒント":"体が動かなくても、考える自由はある。"},
+{"名前":"ジェーン・グドール","分野":"研究","時代":"今","愛媛四国":false,"説明":"動物行動学者（1934年〜2025年・イギリス）","はじめ":"子どものころから動物が大好きだった。","つまずき":"大学に行くお金がなく、秘書として働いた。","その後":"26歳でアフリカにわたり、チンパンジーの研究で世界的な学者になった。","ヒント":"好きを手ばなさなければ、チャンスは来る。"},
+{"名前":"テンプル・グランディン","分野":"研究","時代":"今","愛媛四国":false,"説明":"動物学者（1947年〜・アメリカ）","はじめ":"子どものころ自閉症と診断され、言葉がなかなか出なかった。","つまずき":"学校でからかわれ、つらい思いをした。","その後":"絵で考える自分の力を生かして、動物にやさしい施設を設計し、大学教授になった。","ヒント":"人とちがう考え方は、世界の役に立つ。"},
+{"名前":"カタリン・カリコ","分野":"研究","時代":"今","愛媛四国":false,"説明":"生化学者（1955年〜・ハンガリー出身）","はじめ":"ハンガリーからアメリカにわたり、mRNAの研究を続けた。","つまずき":"研究費がとれず、大学で降格されたこともあった。","その後":"その研究が新型コロナのワクチンにつながり、2023年にノーベル賞を受賞した。","ヒント":"認められなくても、信じた研究を続けた。"},
+{"名前":"山崎直子","分野":"研究","時代":"今","愛媛四国":false,"説明":"宇宙飛行士（1970年〜）","はじめ":"中学生のころ、宇宙に行きたいと思った。","つまずき":"宇宙飛行士の候補に選ばれてから、実際に宇宙へ行くまで11年待った。","その後":"2010年、スペースシャトルで宇宙へ行った。","ヒント":"待つ時間も、準備の時間。"},
+{"名前":"さかなクン","分野":"研究","時代":"今","愛媛四国":false,"説明":"魚類学者・タレント（1975年〜）","はじめ":"小さいころから魚が大好きで、毎日魚を見て絵を描いていた。","つまずき":"アルバイトがうまくいかず、失敗続きだったと本人が語っている。","その後":"魚の知識と絵の力で活躍し、大学の客員教授にもなった。","ヒント":"「好き」を続けることが、仕事になる。"},
+{"名前":"前野ウルド浩太郎","分野":"研究","時代":"今","愛媛四国":false,"説明":"バッタ研究者（1980年〜）","はじめ":"子どものころ、昆虫の本を読んで昆虫学者にあこがれた。","つまずき":"研究者の仕事が見つからず、アフリカで収入のない時期もあった。","その後":"バッタ研究の本がベストセラーになり、研究を続けている。","ヒント":"追いつめられた時期を、笑いと本にかえた。"},
+{"名前":"アインシュタイン","分野":"研究","時代":"昔","愛媛四国":false,"説明":"物理学者（1879年〜1955年）","はじめ":"16歳で受けた大学の入試に不合格になった。","つまずき":"大学を出たあとも大学の仕事が見つからず、特許局で働いた。","その後":"働きながら研究を続け、1905年に相対性理論などの大切な論文を次々に発表した。","ヒント":"まわり道の仕事の時間に、考えを深めていた。"},
+{"名前":"マリー・キュリー","分野":"研究","時代":"昔","愛媛四国":false,"説明":"物理学者・化学者（1867年〜1934年）","はじめ":"ポーランドでは、女性は大学に入れなかった。","つまずき":"家庭教師として働いて姉の学費を支え、24歳でやっとパリの大学へ。","その後":"放射能の研究で、ノーベル賞を2回受賞した。","ヒント":"順番がまわってくるまで、準備を続けた。"},
+{"名前":"野口英世","分野":"研究","時代":"昔","愛媛四国":false,"説明":"細菌学者（1876年〜1928年）","はじめ":"1歳のとき、左手に大やけどをした。","つまずき":"手術で指が動くようになり、医学に感動して医師をめざした。学歴がなく苦労した。","その後":"アメリカにわたって研究を続け、世界で知られる学者になった。","ヒント":"つらい経験が、進む道を決めた。"},
+{"名前":"牧野富太郎","分野":"研究","時代":"昔","愛媛四国":true,"説明":"植物学者（1862年〜1957年・高知出身）","はじめ":"小学校を途中でやめ、ふるさとの山で植物を観察しながら独学した。","つまずき":"学歴がないことで苦労し、研究のお金にも困りつづけた。","その後":"東京大学で研究を続け、1500種類以上の植物に名前をつけた。","ヒント":"学校の外でも、好きなことを深めれば道になる。"},
+{"名前":"南方熊楠","分野":"研究","時代":"昔","愛媛四国":false,"説明":"博物学者（1867年〜1941年）","はじめ":"記憶力がとても強く、子どものころから本を書き写していた。","つまずき":"大学の予備校のような学校を途中でやめ、アメリカやイギリスで独学した。","その後":"和歌山で粘菌などを研究し、ユニークな学者として知られた。","ヒント":"自分のやり方で学ぶ人もいる。"},
+{"名前":"ダーウィン","分野":"研究","時代":"昔","愛媛四国":false,"説明":"博物学者（1809年〜1882年・イギリス）","はじめ":"医学部に入ったが、手術を見るのがつらくてやめた。","つまずき":"牧師をめざして学び直したが、虫や植物を集めるほうが好きだった。","その後":"船で世界を回った経験から、「種の起源」を書いた。","ヒント":"合わなかった道から、好きな道が見えた。"},
+{"名前":"メンデル","分野":"研究","時代":"昔","愛媛四国":false,"説明":"生物学者（1822年〜1884年）","はじめ":"家が貧しく、修道院に入って学んだ。","つまずき":"先生の資格試験に落ちた。修道院の庭でエンドウを育てて研究したが、生きているあいだは認められなかった。","その後":"亡くなって16年後に研究が再発見され、「遺伝学の父」と呼ばれた。","ヒント":"すぐに認められなくても、正しいことは残る。"},
+{"名前":"杉田玄白","分野":"研究","時代":"昔","愛媛四国":false,"説明":"医者（1733年〜1817年）","はじめ":"オランダ語の解剖の本に出会った。","つまずき":"オランダ語がほとんどわからず、辞書もないまま仲間と翻訳に取りくんだ。","その後":"約4年かけて「解体新書」を完成させ、日本の医学を大きく進めた。","ヒント":"わからないところから、みんなで始めればいい。"},
+{"名前":"伊能忠敬","分野":"研究","時代":"昔","愛媛四国":false,"説明":"測量家（1745年〜1818年）","はじめ":"商家の跡つぎとして、長く家業を立て直す仕事をしていた。","つまずき":"50歳で家業をゆずってから江戸に出て、天文学を学びはじめた。","その後":"55歳から全国を歩いて測量。のちに弟子たちが完成させた日本地図は、驚くほど正確だった。","ヒント":"学びはじめるのに、遅すぎることはない。"},
+{"名前":"エジソン","分野":"研究","時代":"昔","愛媛四国":false,"説明":"発明家（1847年〜1931年）","はじめ":"小学校に入ったが、3か月ほどでやめた。","つまずき":"母に勉強を教わり、本を読んで実験をくり返した。","その後":"電球や蓄音機など、たくさんの発明をした。","ヒント":"学校が合わなくても、学び方はある。"},
+{"名前":"ライト兄弟","分野":"研究","時代":"昔","愛媛四国":false,"説明":"発明家（兄1867年〜1912年・弟1871年〜1948年）","はじめ":"兄弟で自転車屋を開いていた。","つまずき":"大学で学んだわけではなく、空を飛ぶ研究は失敗の連続だった。","その後":"1903年、人類で初めて動力飛行機で空を飛んだ。","ヒント":"身近な仕事の知識が、大きな夢に役立つ。"},
+{"名前":"安藤百福","分野":"仕事","時代":"今","愛媛四国":false,"説明":"実業家（1910年〜2007年）","はじめ":"いくつもの事業を手がけていた。","つまずき":"40代で、仕事のトラブルから財産をほとんど失った。","その後":"自宅の小さな小屋で1年かけて研究し、48歳でチキンラーメンを発明した。","ヒント":"ゼロからでも、もう一度始められる。"},
+{"名前":"本田宗一郎","分野":"仕事","時代":"今","愛媛四国":false,"説明":"技術者・実業家（1906年〜1991年）","はじめ":"小学校を出て、自動車修理の工場で働いた。","つまずき":"独立して部品をつくったが失敗し、学校に入って学び直した。","その後":"オートバイや自動車をつくる会社を世界的な企業に育てた。","ヒント":"失敗したら、学び直せばいい。"},
+{"名前":"松下幸之助","分野":"仕事","時代":"今","愛媛四国":false,"説明":"実業家（1894年〜1989年）","はじめ":"9歳で家を出て、お店で働きはじめた。","つまずき":"体が弱く、最初につくった製品はほとんど売れなかった。","その後":"家電の会社を世界的な企業に育てた。","ヒント":"体が弱くても、工夫と人の力で大きなことができる。"},
+{"名前":"スティーブ・ジョブズ","分野":"仕事","時代":"今","愛媛四国":false,"説明":"実業家（1955年〜2011年・アメリカ）","はじめ":"大学を半年でやめ、興味のある授業だけをこっそり聴いていた。","つまずき":"30歳のとき、自分がつくった会社を追い出された。","その後":"戻ってからiPhoneなどを生み出した。","ヒント":"一度出ていった場所に、戻ることもある。"},
+{"名前":"カーネル・サンダース","分野":"仕事","時代":"今","愛媛四国":false,"説明":"実業家（1890年〜1980年・アメリカ）","はじめ":"いくつもの仕事を転々とした。","つまずき":"60代で、経営していたお店をやめることになった。","その後":"65歳からフライドチキンの作り方を広める仕事を始め、世界的なチェーンになった。","ヒント":"何歳からでも、新しい挑戦はできる。"},
+{"名前":"山口絵理子","分野":"仕事","時代":"今","愛媛四国":false,"説明":"デザイナー・起業家（1981年〜）","はじめ":"小学校でいじめにあい、学校に行けない時期があった。","つまずき":"高校で柔道に打ちこみ、勉強して大学へ進んだ。","その後":"バングラデシュにわたり、現地の素材でバッグをつくる会社を立ち上げた。","ヒント":"学校に行けなかった時期のあとにも、道は続いている。"},
+{"名前":"メラニー・パーキンス","分野":"仕事","時代":"今","愛媛四国":false,"説明":"起業家（1987年〜・オーストラリア）","はじめ":"大学生のころ、デザインソフトの使い方を教えるアルバイトをしていた。","つまずき":"「もっとかんたんなデザインツールを」と考えたが、投資家に100回以上断られた。","その後":"デザインツール「Canva」をつくり、世界中で使われるサービスにした。","ヒント":"100回断られても、101回目がある。"},
+{"名前":"サラ・ブレイクリー","分野":"仕事","時代":"今","愛媛四国":false,"説明":"起業家（1971年〜・アメリカ）","はじめ":"法律の道をめざしたが、試験に合格できなかった。","つまずき":"ファックスを売る営業の仕事をしていた。","その後":"ためたお金で下着の会社をつくり、大きなブランドに育てた。","ヒント":"試験の結果だけで、道は決まらない。"},
+{"名前":"栗原はるみ","分野":"仕事","時代":"今","愛媛四国":false,"説明":"料理家（1947年〜）","はじめ":"専業主婦として、家族のために料理をつくっていた。","つまずき":"仕事として料理をするとは思っていなかった。","その後":"40代で出した料理本が大ヒットし、料理家として広く知られるようになった。","ヒント":"毎日の「ふつう」が、仕事になる。"},
+{"名前":"オプラ・ウィンフリー","分野":"仕事","時代":"今","愛媛四国":false,"説明":"テレビ司会者・実業家（1954年〜・アメリカ）","はじめ":"貧しい家庭で、苦労の多い子ども時代を過ごした。","つまずき":"最初のニュースキャスターの仕事で「向いていない」と言われ、番組を降ろされた。","その後":"トーク番組の司会で大成功し、世界で影響力のある人のひとりになった。","ヒント":"向いていない場所の先に、向いている場所がある。"},
+{"名前":"柳井正","分野":"仕事","時代":"今","愛媛四国":false,"説明":"実業家（1949年〜）","はじめ":"大学を出て会社に入ったが、1年もたたずにやめた。","つまずき":"実家の小さな洋服店を継いだ。自分で「失敗ばかりだった」と語っている。","その後":"その店を「ユニクロ」として世界的なブランドにした。","ヒント":"失敗の数だけ、学びがある。"},
+{"名前":"ジャック・マー","分野":"仕事","時代":"今","愛媛四国":false,"説明":"実業家（1964年〜・中国）","はじめ":"英語が好きで、観光客に話しかけて練習した。","つまずき":"大学受験に2回失敗し、就職でも何十社に落ちた。","その後":"インターネットの会社「アリババ」を立ち上げ、巨大企業に育てた。","ヒント":"落ちた回数より、あきらめなかった回数。"},
+{"名前":"黒柳徹子","分野":"表現","時代":"今","愛媛四国":false,"説明":"俳優・司会者（1933年〜）","はじめ":"小学1年生で、学校をやめることになった。","つまずき":"落ち着きがないと言われ、別の小さな学校（トモエ学園）に移った。","その後":"その学校で自分らしく育ち、テレビの世界で長く活躍。「窓ぎわのトットちゃん」は世界中で読まれた。","ヒント":"合う学校・合う場所は、きっとある。"},
+{"名前":"中川翔子","分野":"表現","時代":"今","愛媛四国":false,"説明":"タレント・歌手（1985年〜）","はじめ":"絵を描くことや、マンガ・アニメが大好きだった。","つまずき":"中学生のとき、学校でつらい思いをして、行くのが苦しい時期があった。","その後":"好きなことに支えられて歌手・タレントになり、自分の経験を本で伝えている。","ヒント":"好きなものが、自分を守ってくれることもある。"},
+{"名前":"大泉洋","分野":"表現","時代":"今","愛媛四国":false,"説明":"俳優（1973年〜）","はじめ":"北海道で育った。","つまずき":"大学受験で2回浪人した。","その後":"北海道の大学の演劇サークルから、地元のテレビ番組に出演し、全国で活躍する俳優になった。","ヒント":"地元での小さな活動が、全国につながる。"},
+{"名前":"タモリ","分野":"表現","時代":"今","愛媛四国":false,"説明":"タレント・司会者（1945年〜）","はじめ":"大学に入ったが、途中で学校を離れた。","つまずき":"保険の営業やボウリング場の支配人など、いろいろな仕事をした。","その後":"30歳ごろテレビの世界に入り、長く愛される司会者になった。","ヒント":"いろいろな仕事の経験が、話の引き出しになる。"},
+{"名前":"役所広司","分野":"表現","時代":"今","愛媛四国":false,"説明":"俳優（1956年〜）","はじめ":"高校を出て、区役所で働いていた。","つまずき":"20歳を過ぎてから、劇団に入り俳優をめざした。","その後":"日本を代表する俳優になり、海外の映画祭で最優秀男優賞もとった。","ヒント":"安定した仕事から、新しい挑戦をする人もいる。"},
+{"名前":"サンドウィッチマン","分野":"表現","時代":"今","愛媛四国":false,"説明":"お笑いコンビ（2人とも1974年〜）","はじめ":"高校のラグビー部の仲間でコンビを組んだ。","つまずき":"長いあいだ売れず、アルバイトをしながら漫才を続けた。","その後":"2007年のM-1グランプリで、敗者復活から勝ち上がって優勝した。","ヒント":"負けた日の次の日に、勝つこともある。"},
+{"名前":"長谷川雅紀（錦鯉）","分野":"表現","時代":"今","愛媛四国":false,"説明":"お笑い芸人（1971年〜）","はじめ":"お笑い芸人をめざして上京した。","つまずき":"何十年も売れない時期が続いた。","その後":"50歳でM-1グランプリに優勝した。","ヒント":"あきらめなければ、50歳でも夢はかなう。"},
+{"名前":"林修","分野":"表現","時代":"今","愛媛四国":false,"説明":"予備校講師・タレント（1965年〜）","はじめ":"大学を出て銀行に就職した。","つまずき":"半年ほどで銀行をやめ、いくつかの仕事でうまくいかない時期があった。","その後":"予備校の国語の先生として人気になり、テレビでも活躍している。","ヒント":"最初の仕事がすべてじゃない。"},
+{"名前":"オードリー・ヘプバーン","分野":"表現","時代":"今","愛媛四国":false,"説明":"俳優（1929年〜1993年）","はじめ":"バレリーナになるのが夢だった。","つまずき":"戦争中は食べるものが足りず、体が弱ってバレエの夢をあきらめた。","その後":"俳優として世界的なスターになり、のちにユニセフの活動で子どもたちを支えた。","ヒント":"あきらめた夢のとなりに、別の夢がある。"},
+{"名前":"チャップリン","分野":"表現","時代":"昔","愛媛四国":false,"説明":"喜劇俳優・映画監督（1889年〜1977年・イギリス）","はじめ":"とても貧しい家に生まれ、子どものころ施設に入ったこともある。","つまずき":"幼いころから舞台に立ち、生活のために働いた。","その後":"アメリカで映画をつくり、世界中の人を笑わせ、感動させた。","ヒント":"苦しかった経験を、笑いにかえた。"},
+{"名前":"孔子","分野":"くらし","時代":"昔","愛媛四国":false,"説明":"中国の思想家（紀元前551年ごろ〜前479年）","はじめ":"幼いころに父を亡くし、貧しい中で育つ。倉庫番などの仕事をしながら学んだ。","つまずき":"政治で理想を実現しようとしたが受け入れられず、50代半ばから十数年、弟子たちと国々を旅した。","その後":"晩年は教育に力をそそぎ、その言葉は「論語」として2500年読みつがれている。","ヒント":"思いどおりにいかなかった旅の時間が、のちの教えの土台になった。"},
+{"名前":"鑑真","分野":"くらし","時代":"昔","愛媛四国":false,"説明":"唐の僧（688年〜763年）","はじめ":"日本から招かれ、海をわたる決意をした。","つまずき":"嵐や妨害で渡航に5回失敗し、その間に目が見えなくなった。","その後":"6回目でついに日本へ。唐招提寺をひらき、日本の仏教の決まりを整えた。","ヒント":"何度失敗しても、目的をあきらめなかった。"},
+{"名前":"空海","分野":"くらし","時代":"昔","愛媛四国":true,"説明":"僧（774年〜835年・讃岐出身）","はじめ":"都の学校で、役人になるための勉強をしていた。","つまずき":"学校を途中でやめ、四国の山や海辺で修行をした。","その後":"唐にわたって学び、帰国後は教えを広め、讃岐の満濃池の工事でも人々を助けた。","ヒント":"決められた道を外れて、自分の学びを見つけた。"},
+{"名前":"一遍","分野":"くらし","時代":"昔","愛媛四国":true,"説明":"僧（1239年〜1289年・伊予の道後出身）","はじめ":"伊予で生まれ、若くして僧になった。","つまずき":"父が亡くなって一度は家に戻り、迷いながら暮らした。","その後":"ふたたび旅に出て、全国を歩いて「踊り念仏」で教えを広めた。","ヒント":"迷って戻った時間のあとに、自分の道を歩き出した。"},
+{"名前":"二宮尊徳","分野":"くらし","時代":"昔","愛媛四国":false,"説明":"農政家（1787年〜1856年）","はじめ":"子どものころ両親を亡くし、家族はばらばらになった。","つまずき":"おじの家で働きながら、夜に本を読んで学んだ。","その後":"荒れた村をいくつも立て直し、多くの人の暮らしを助けた。","ヒント":"苦しい中でも、学ぶ時間をつくった。"},
+{"名前":"ジョン万次郎","分野":"くらし","時代":"昔","愛媛四国":true,"説明":"通訳・教育者（1827年〜1898年・土佐出身）","はじめ":"14歳のとき、漁に出て遭難し、無人島に流れついた。","つまずき":"アメリカの船に助けられ、言葉もわからないままアメリカで学んだ。","その後":"帰国後、英語の通訳や先生として、日本の開国を助けた。","ヒント":"思いがけない出来事が、新しい世界への入口になる。"},
+{"名前":"津田梅子","分野":"くらし","時代":"昔","愛媛四国":false,"説明":"教育者（1864年〜1929年）","はじめ":"6歳でアメリカに留学し、11年間暮らした。","つまずき":"帰国すると日本語を忘れていて、女性が活躍できる場所もほとんどなかった。","その後":"女性のための学校（いまの津田塾大学）をつくった。","ヒント":"居場所がなければ、自分でつくる。"},
+{"名前":"ナイチンゲール","分野":"くらし","時代":"昔","愛媛四国":false,"説明":"看護師（1820年〜1910年・イギリス）","はじめ":"裕福な家に生まれた。","つまずき":"看護の仕事をしたいと言うと、家族に強く反対された。","その後":"30代で戦地の病院に行き、統計を使って衛生を改善し、看護を職業として確立した。","ヒント":"反対されても、自分の役目を見つけた。"},
+{"名前":"ヘレン・ケラー","分野":"くらし","時代":"昔","愛媛四国":false,"説明":"教育者・社会福祉活動家（1880年〜1968年・アメリカ）","はじめ":"1歳のころ病気で、目も耳も不自由になった。","つまずき":"言葉がわからず、気持ちを伝えられない時期が続いた。","その後":"サリバン先生と出会って言葉を学び、大学を卒業して、障害のある人のために世界で活動した。","ヒント":"ひとりの先生との出会いが、世界を変える。"},
+{"名前":"リンカーン","分野":"くらし","時代":"昔","愛媛四国":false,"説明":"アメリカ大統領（1809年〜1865年）","はじめ":"開拓地の貧しい家で育ち、学校に通えたのは合計1年ほどだった。","つまずき":"選挙に何度も落選し、仕事でも失敗した。","その後":"独学で法律を学んで弁護士になり、のちに大統領になった。","ヒント":"落選の数より、立ち上がった数。"}
+];
+const toArr=o=>[o.名前,o.分野,o.時代==='昔'?'昔':'今',o.愛媛四国?1:0,o.説明||'',o.はじめ||'',o.つまずき||'',o.その後||'',o.ヒント||''];
+const CATN={'音楽':'音楽','アート':'アート・デザイン','ことば':'ことば・物語','スポーツ':'スポーツ','研究':'研究・科学','仕事':'仕事・起業','表現':'テレビ・表現','くらし':'むかしの社会・くらし'};
+let BASE=BUILTIN.map(toArr);
+S.mine=S.mine||[];S.fav=S.fav||[];
+const ALL=()=>[...BASE,...S.mine.map(o=>{const a=toArr(o);a.mine=1;return a})];
+const CATS=['すべて',...Object.keys(CATN)];
+const ERAS=['すべて','いまの人','むかしの人','愛媛・四国ゆかり','お気に入り','わたしが追加'];
+let cat='すべて',era='すべて',shown=12,editing=-1;
+const heart='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-9.5-9.3C1 8 3.4 4.5 7 4.5c2 0 3.7 1.1 5 2.8 1.3-1.7 3-2.8 5-2.8 3.6 0 6 3.5 4.5 7.2C19.5 16.4 12 21 12 21z"/></svg>';
+const card=(s,extra)=>`<article class="story c-${esc(CATN[s[1]]?s[1]:'くらし')} ${extra||''}"><div class="hd"><h3>${esc(s[0])}</h3><div class="meta">${esc(s[4])}</div>
+ <span class="tag ${s[2]==='今'?'now':'old'}">${s[2]==='今'?'いまの人':'むかしの人'}</span><span class="tag old">${esc(CATN[s[1]]||s[1])}</span>${s[3]?'<span class="tag eh">愛媛・四国</span>':''}${s.mine?'<span class="tag eh">わたしが追加</span>':''}
+ <button class="fav" data-f="${esc(s[0])}" aria-pressed="${S.fav.includes(s[0])}" aria-label="${esc(s[0])}をお気に入り">${heart}</button></div>
+ <div class="bd">${s[5]?`<div><b class="k1">はじめ</b>${esc(s[5])}</div>`:''}${s[6]?`<div><b class="k2">つまずき・迷い</b>${esc(s[6])}</div>`:''}${s[7]?`<div><b class="k3">その後</b>${esc(s[7])}</div>`:''}${s[8]?`<p class="hint">${esc(s[8])}</p>`:''}</div></article>`;
+const bindFav=root=>root.querySelectorAll('.fav').forEach(b=>b.onclick=()=>{const n=b.dataset.f;const i=S.fav.indexOf(n);i<0?S.fav.push(n):S.fav.splice(i,1);save();
+  document.querySelectorAll('.fav').forEach(x=>{if(x.dataset.f===n)x.setAttribute('aria-pressed',S.fav.includes(n))});if(era==='お気に入り')drawStoryList();toast(i<0?'お気に入りに入れました':'お気に入りから外しました')});
+const filtered=()=>{const q=$('sq').value.trim();return ALL().filter(s=>(cat==='すべて'||s[1]===cat)&&(era==='すべて'||(era==='いまの人'&&s[2]==='今')||(era==='むかしの人'&&s[2]==='昔')||(era==='愛媛・四国ゆかり'&&s[3])||(era==='お気に入り'&&S.fav.includes(s[0]))||(era==='わたしが追加'&&s.mine))&&(!q||s.join(' ').includes(q)))};
+const drawStoryList=()=>{const L=filtered();$('sCount').textContent=`${L.length}人`;
+  $('sList').innerHTML=L.length?L.slice(0,shown).map(s=>card(s)).join(''):'<p class="muted">見つかりませんでした。ほかのことばで探してみてね。</p>';
+  $('sMore').style.display=L.length>shown?'':'none';bindFav($('sList'))};
+const chips=(el,list,get,set)=>{el.innerHTML=list.map(c=>`<button class="chip" aria-pressed="${c===get()}">${c==='すべて'?c:(CATN[c]||c)}</button>`).join('');
+  el.querySelectorAll('.chip').forEach((b,i)=>b.onclick=()=>{set(list[i]);shown=12;drawStories()})};
+const drawPick=()=>{const A=ALL();const d=new Date();const i=(d.getFullYear()*372+d.getMonth()*31+d.getDate())%A.length;
+  $('todayPick').innerHTML=`<h3 class="hand" style="color:var(--pink);margin-bottom:10px">きょうの1人</h3>${card(A[i],'pick')}`;bindFav($('todayPick'))};
+const drawStories=()=>{chips($('sCat'),CATS,()=>cat,v=>cat=v);chips($('sEra'),ERAS,()=>era,v=>era=v);drawStoryList()};
+$('sq').oninput=()=>{shown=12;drawStoryList()};
+$('sMore').onclick=()=>{shown+=12;drawStoryList()};
+/* 追加フォーム */
+$('aC').innerHTML=Object.keys(CATN).map(k=>`<option value="${k}">${CATN[k]}</option>`).join('');
+const F=[['aN','名前'],['aM','説明'],['aA','はじめ'],['aB','つまずき'],['aS','その後'],['aT','ヒント']];
+const clearForm=()=>{F.forEach(([id])=>$(id).value='');$('aH').checked=false;editing=-1;$('aSave').textContent='追加する';$('aCancel').hidden=true};
+$('aSave').onclick=()=>{const name=$('aN').value.trim();if(!name){toast('名前を入れてね');return}
+  const o={};F.forEach(([id,k])=>o[k]=$(id).value.trim());o.分野=$('aC').value;o.時代=$('aE').value;o.愛媛四国=$('aH').checked;
+  if(editing>=0)S.mine[editing]=o;else S.mine.push(o);save();toast(editing>=0?'直しました':'追加しました');clearForm();drawMine();drawStoryList()};
+$('aCancel').onclick=clearForm;
+const drawMine=()=>{if(!S.mine.length){$('mine').innerHTML='';return}
+  $('mine').innerHTML=`<h3 style="font-size:17px">わたしが追加した人（${S.mine.length}人）</h3>`+S.mine.map((o,i)=>`<div class="unit"><span>${esc(o.名前)}<span class="small">　${esc(o.説明||'')}</span></span><span class="row"><button class="btn" data-e="${i}">直す</button><button class="btn" data-x="${i}">消す</button></span></div>`).join('')+
+   `<div class="row" style="margin-top:10px"><button class="btn" id="aCopy">追加した人を書き出す（コピー）</button></div><p class="small">書き出した文字は、アプリ版の stories.json に貼り付けると、全員の端末に入る「正式な人物」になります。</p>`;
+  $('mine').querySelectorAll('[data-e]').forEach(b=>b.onclick=()=>{const o=S.mine[+b.dataset.e];editing=+b.dataset.e;F.forEach(([id,k])=>$(id).value=o[k]||'');$('aC').value=o.分野;$('aE').value=o.時代;$('aH').checked=!!o.愛媛四国;$('aSave').textContent='直して保存';$('aCancel').hidden=false;$('addCard').scrollIntoView()});
+  $('mine').querySelectorAll('[data-x]').forEach(b=>b.onclick=()=>{if(b.dataset.c){S.mine.splice(+b.dataset.x,1);save();drawMine();drawStoryList()}else{b.dataset.c=1;b.textContent='もう一度押すと消えます'}});
+  $('aCopy').onclick=()=>copy(S.mine.map(o=>JSON.stringify(o)).join(',\n'),'書き出しました')};
+drawMine();drawPick();
+/* stories.json があれば、そちらを使う（アプリ版で人物を追加・修正するためのファイル） */
+fetch('stories.json',{cache:'no-cache'}).then(r=>r.ok?r.json():null).then(j=>{if(Array.isArray(j)&&j.length){BASE=j.filter(o=>o&&o.名前).map(toArr);drawPick();drawStoryList()}}).catch(()=>{});
+
+/* ---------- おうちの人へ ---------- */
+$('exp').onclick=()=>copy(JSON.stringify(S),'データをコピーしました。メモアプリなどに貼って保存してね');
+$('impBtn').onclick=()=>{try{const o=JSON.parse($('imp').value);if(typeof o!=='object')throw 0;S=Object.assign(S,o);save();toast('戻しました');setTimeout(()=>location.reload(),600)}catch(e){toast('データの形がちがうようです')}};
+$('saveName').onclick=()=>{S.name=$('nameIn').value.trim();save();hello();toast('保存しました')};
+
+/* ---------- 起動 ---------- */
+hello();msg();drawSteps();drawBars();drawMap();drawSim();drawSaved();drawSubjects();drawLogs();drawWorries();drawNotes();drawStories();route();
+}
+</script>
+<script>if("serviceWorker" in navigator){navigator.serviceWorker.register("sw.js").catch(()=>{})}</script>
+</body>
+</html>
